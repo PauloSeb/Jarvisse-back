@@ -1,12 +1,13 @@
 {
   "name": "Jarvisse-back",
-  "version": "0.0.1",
+  "version": "0.0.3",
   "description": "F2B506 project Backend",
   "main": "lib/upnp-controlpoint.js",
   "directories": {
     "lib": "lib"
   },
   "dependencies": {
+    "express": "3.x",
     "xml2js": "~0.2.3"
   }
 }

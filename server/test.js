@@ -36,11 +36,11 @@ var handleDevice = function(device) {
 			console.log("Une horloge connectée!");
 			var eventService = device.services['urn:schemas-upnp-org:serviceId:timer:1'];
 			//Subscribe
-			eventService.subscribe(function() {
+			/*eventService.subscribe(function() {
 				eventService.on("stateChange", function(value) {
 					console.log(JSON.stringify(value));
 				});
-			});
+			});*/
 			//SetTime (not implemented)
 			//console.log("SetTime");
 			/*eventService.callAction("SetTime", { CurrentTime : 'Wed, Mar 05, 14' }, function(err, buf) {
@@ -59,6 +59,20 @@ var handleDevice = function(device) {
 					console.log("got SOAP reponse: " + buf);
 				}
 			});*/
+		break;
+		case "urn:schemas-upnp-org:device:X10CM11:1":
+			console.log("CM11 connecté!");
+			console.log(device.services);
+			var eventService = device.services['urn:schemas-upnp-org:serviceId:2'];
+			//SetLampe_Bureau
+			eventService.callAction("ExecuteCommand", {ElementName: "Lampe_Bureau", Command: "Off" }, function(err, buf) {
+				if (err) {
+					console.log("got err when performing action: " + err + " => " + buf);
+				} else {
+					console.log("got SOAP reponse: " + buf);
+				}
+			});
+		break;
 	};
 }
 
