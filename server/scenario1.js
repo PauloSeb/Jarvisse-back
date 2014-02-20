@@ -14,6 +14,7 @@ cp.on("device", function(device){
 	devices[device.deviceType] = device;
 });
 
+
 app.get('/UPnP/lampeHalogene/on', function(req, res) {
 	var device = devices['urn:schemas-upnp-org:device:X10CM11:1'];
 	console.log(device.udn);
