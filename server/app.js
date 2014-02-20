@@ -56,9 +56,27 @@ distance = function(x1, y1, x2, y2){
 	return Math.sqrt(Math.pow(x1-x2,2) + Math.pow(y1-y2));
 }
 
+function distFrom(lat1, lng1, lat2, lng2) {
+	var toRadians = function(d){ return 	d * (Math.PI / 180);}
+
+    var earthRadius = 6369;
+    var dLat = toRadians(lat2-lat1);
+    var dLng = toRadians(lng2-lng1);
+    var a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+               Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) *
+               Math.sin(dLng/2) * Math.sin(dLng/2);
+    var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    var dist = earthRadius * c;
+    return dist;
+}
+
 //Events handling
 handlePositionChange = function(){
-	var d = distance(sensor['Android'].positionX, sensor['Android'].positionY, homePositionX, homePositionY);
+	var d = distFrom(sensor['Android'].positionX, sensor['Android'].positionY, homePositionX, homePositionY);
+	var val = 'off';
+	if(d < 50)
+		val = 'on';
+	setSensor('Lamp', 'power', val);
 }
 
 //events availables
