@@ -14,6 +14,34 @@ var cp = new UpnpControlPoint();
 cp.search();
 cp.on("device", function(device){
 	uPnPdevices[device.deviceType] = device;
+	switch(device.deviceType) {
+		case 'urn:schemas-upnp-org:device:PhotoTextViewer:1':
+			device.services['urn:schemas-upnp-org:serviceId:1'].subscribe(function() {
+				device.services['urn:schemas-upnp-org:serviceId:1'].on("stateChange", function(value) {
+					console.log(JSON.stringify(value));
+				});
+			});
+			device.services['urn:schemas-upnp-org:serviceId:2'].subscribe(function() {
+				device.services['urn:schemas-upnp-org:serviceId:1'].on("stateChange", function(value) {
+					console.log(JSON.stringify(value));
+				});
+			});
+		break;
+		case 'urn:schemas-upnp-org:device:AudioPlayer:1':
+			device.services['urn:schemas-upnp-org:serviceId:1'].subscribe(function() {
+				device.services['urn:schemas-upnp-org:serviceId:1'].on("stateChange", function(value) {
+					console.log(JSON.stringify(value));
+				});
+			});
+		break;
+		case 'urn:schemas-upnp-org:device:X10CM11:1':
+			device.services['urn:schemas-upnp-org:serviceId:2'].subscribe(function() {
+				device.services['urn:schemas-upnp-org:serviceId:1'].on("stateChange", function(value) {
+					console.log(JSON.stringify(value));
+				});
+			});
+		break;
+	}
 });
 
 //Events
