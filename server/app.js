@@ -15,3 +15,23 @@ cp.search();
 cp.on("device", function(device){
 	uPnPdevices[device.deviceType] = device;
 });
+
+//Events
+var events = require('events');
+var eventEmitter = new events.EventEmitter();
+
+
+var homePositionX = 0;
+var homePositionY = 0;
+
+distance = function(x1, y1, x2, y2){
+	return Math.sqrt(Math.pow(x1-x2,2) + Math.pow(y1-y2));
+}
+
+//Events handling
+handlePositionChange = function(){
+	var d = distance(sensor['Android'].positionX, sensor['Android'].positionY, homePositionX, homePositionY);
+}
+
+//events availables
+eventEmitter.on('positionChange', handlePositionChange);
