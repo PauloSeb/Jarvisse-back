@@ -1,6 +1,10 @@
 //Global vars
 var uPnPdevices = new Array();
 var sensor = new Array();
+sensor['RFID'] = new Array();
+
+//XML
+var xml2js = require('xml2js');
 
 //REST
 var express = require('express');
@@ -18,11 +22,13 @@ cp.on("device", function(device){
 		case 'urn:schemas-upnp-org:device:PhotoTextViewer:1':
 			device.services['urn:schemas-upnp-org:serviceId:1'].subscribe(function() {
 				device.services['urn:schemas-upnp-org:serviceId:1'].on("stateChange", function(value) {
+					console.log("PhotoTextViewer:1");
 					console.log(JSON.stringify(value));
 				});
 			});
 			device.services['urn:schemas-upnp-org:serviceId:2'].subscribe(function() {
-				device.services['urn:schemas-upnp-org:serviceId:1'].on("stateChange", function(value) {
+				device.services['urn:schemas-upnp-org:serviceId:2'].on("stateChange", function(value) {
+					console.log("PhotoTextViewer:2");
 					console.log(JSON.stringify(value));
 				});
 			});
@@ -30,14 +36,52 @@ cp.on("device", function(device){
 		case 'urn:schemas-upnp-org:device:AudioPlayer:1':
 			device.services['urn:schemas-upnp-org:serviceId:1'].subscribe(function() {
 				device.services['urn:schemas-upnp-org:serviceId:1'].on("stateChange", function(value) {
+					console.log("AudioPlayer:1");
 					console.log(JSON.stringify(value));
 				});
 			});
 		break;
 		case 'urn:schemas-upnp-org:device:X10CM11:1':
 			device.services['urn:schemas-upnp-org:serviceId:2'].subscribe(function() {
-				device.services['urn:schemas-upnp-org:serviceId:1'].on("stateChange", function(value) {
+				device.services['urn:schemas-upnp-org:serviceId:2'].on("stateChange", function(value) {
+					console.log("X10CM11:1");
 					console.log(JSON.stringify(value));
+				});
+			});
+		break;
+		case 'urn:schemas-upnp-org:device:Phidget:1':
+			device.services['urn:schemas-upnp-org:serviceId:1'].subscribe(function() {
+				device.services['urn:schemas-upnp-org:serviceId:1'].on("stateChange", function(value) {
+					var xml = value.Notification;
+					var parser = new xml2js.Parser();
+					try {
+						parser.parseString(xml, function(err, result) {
+							if (err) {
+								console.log("got XML parsing err: " + err);
+								return;
+							}
+							sensor['RFID'].push(result);
+							console.log("RFID: user id " + result.tagInfo.$.id + " ("+result.tagInfo.$.value+") " + result.tagInfo.$.action + " on "+ result.tagInfo.$.date);
+							/*
+								value template (gained/lost):
+								{ tagInfo: 
+								   { '$': 
+								      { action: 'gained',
+								        date: 'Mon Feb 24 11:42:12 CET 2014',
+								        id: '4d004ae50e',
+								        value: 'leNom' },
+								     phidget: [ [Object] ] } }
+
+								phidget template:
+								[ { '$': 
+							     { name: 'Phidget RFID Read-Write',
+							       serial: '332733',
+							       version: '100' } } ]
+							*/
+						});
+					} catch (exception) {
+						console.log("RFID exception: " + exception);
+					}
 				});
 			});
 		break;
