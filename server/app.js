@@ -65,6 +65,28 @@ app.post('/setAudioPlayer', function(req, res){
 	}
 });
 
+app.post('/setLampeBureau', function(req, res){
+	if(!req.body.hasOwnProperty('toggle')) {
+		res.statusCode = 400;
+		return res.send('Error 400 : switch value missing!');
+	} else {
+		setLampeBureau(req.body.toggle);
+		res.statusCode = 200;
+		res.send("ok");
+	}
+});
+
+app.post('/setLampeHalogene', function(req, res){
+	if(!req.body.hasOwnProperty('toggle')) {
+		res.statusCode = 400;
+		return res.send('Error 400 : switch value missing!');
+	} else {
+		setLampeHalogene(req.body.toggle);
+		res.statusCode = 200;
+		res.send("ok");
+	}
+});
+
 //UPnP
 var UpnpControlPoint = require("../lib/upnp-controlpoint").UpnpControlPoint;
 var cp = new UpnpControlPoint();
@@ -144,8 +166,20 @@ cp.on("device", function(device){
 	}
 });
 
-function getText() {
-	return sensor['PhotoTextViewer'].text;
+function getDevice(device) {
+	return sensor[device];
+}
+
+function setDevice(device, service, action, parameters, sensorName) {
+	uPnPdevices[device].services[service].callAction(action, parameters, function(err, buf) {
+		if (err) {
+			console.log("got err when performing action: " + err + " => " + buf);
+		} else {
+			console.log("got SOAP reponse: " + buf);
+			if(sensor[sensorName] == null) sensor[sensorName] = new Array();
+			sensor[sensorName].push({date: new Date(), value: buf});
+		}
+	});
 }
 
 function getLastText() {
@@ -176,7 +210,7 @@ function setPicture(url) {
 }
 
 function getAudioPlayer() {
-	return sensor['AudioPlayer'];
+	return getDevice('AudioPlayer');
 }
 
 function getLastAudioPlayer() {
@@ -194,6 +228,38 @@ function setAudioPlayer(command, url) {
 			getLastAudioPlayer();
 		}
 	});
+}
+
+function getRFID() {
+	return getDevice('RFID');
+}
+
+function getLastRFID() {
+	return (getRFID())[getRFID().length - 1];
+}
+
+function getLampeBureau() {
+	return getDevice('LampeBureau');
+}
+
+function getLastLampeBureau() {
+	return (getDevice('LampeBureau'))[getDevice('LampeBureau').length - 1];
+}
+
+function setLampeBureau(toggle) {
+	setDevice('urn:schemas-upnp-org:device:X10CM11:1', 'urn:schemas-upnp-org:serviceId:2', "ExecuteCommand", {ElementName: "Lampe_Bureau", Command: toggle }, "LampeBureau");
+}
+
+function getLampeHalogene() {
+	return getDevice('LampeHalogene');
+}
+
+function getLastLampeHalogene() {
+	return (getDevice('LampeHalogene'))[getDevice('LampeHalogene').length - 1];
+}
+
+function setLampeHalogene(toggle) {
+	setDevice('urn:schemas-upnp-org:device:X10CM11:1', 'urn:schemas-upnp-org:serviceId:2', "ExecuteCommand", {ElementName: "Lampe_Halogene", Command: toggle }, "LampeHalogene");
 }
 
 //Events
