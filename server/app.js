@@ -1,7 +1,14 @@
 /*--------------------------------------------------    Global Vars    --------------------------------------------------------*/
-var xml2js = require('xml2js');
+var UpnpControlPoint = require("../lib/upnp-controlpoint").UpnpControlPoint;
+var cp = new UpnpControlPoint();
 var uPnPdevices = new Array();
 var sensor = new Array();
+
+var http = require('http');
+var fs = require('fs');
+var path = require('path');
+
+var xml2js = require('xml2js');
 
 var homePosition = {latitude:0, longitude: 0};
 var distanceForLight = 50; //en mètres
@@ -10,10 +17,13 @@ var lastKitchenAppearance = 0;
 var kitchenFirstHour = 18;
 var kitchenLastHour = 22;
 
-/*--------------------------------------------------    UPnP    --------------------------------------------------------*/
+/*--------------------------------------------------    IP Adress   --------------------------------------------------------*/
+var os = require( 'os' );
+var networkInterfaces = os.networkInterfaces();
+var ipAddress = (networkInterfaces.en1)[1].address;
+console.log("IP address : " + (networkInterfaces.en1)[1].address );
 
-var UpnpControlPoint = require("../lib/upnp-controlpoint").UpnpControlPoint;
-var cp = new UpnpControlPoint();
+/*--------------------------------------------------    UPnP    --------------------------------------------------------*/
 cp.search();
 cp.on("device", function(device){
 	uPnPdevices[device.deviceType] = device;
@@ -190,6 +200,30 @@ app.use(express.json());
 app.listen(5000);
 console.log("REST Server listening on port 5000");
 
+//MP3 à lire
+app.get('/voice.mp3', function(req, res){
+	var filepath = path.join(__dirname, 'voice.mp3');
+	var stat = fs.statSync(filepath);
+
+	res.writeHead(200, {
+		'Content-Type': 'audio/mpeg',
+		'Content-Length': stat.size
+	});
+
+	var readStream = fs.createReadStream(filepath);
+	readStream.pipe(res);
+});
+
+//Liste tous les capteurs ayant des données
+app.get('/textToSpeech', function(req, res) {
+	if(!req.query.hasOwnProperty('text')) {
+		res.statusCode = 400;
+		return res.send('Error 400 : text missing');
+	}
+	textToSpeech(req.query.text);
+	res.send('OK');
+});
+
 //Liste tous les capteurs ayant des données
 app.get('/listSensor', function(req, res) {
 	res.send(JSON.stringify(listSensor()));
@@ -309,4 +343,18 @@ app.post('/accelero', function(sReq, sRes){
 
 function decodeDataFromAndroid(data){
 	return decodeURI(data.split('+').join('%20'));
+}
+
+/*--------------------------------------------------    TTS    --------------------------------------------------------*/
+
+function textToSpeech(text) {
+	var query = "http://translate.google.fr/translate_tts?ie=UTF-8&tl=fr&q="+text;
+	var file = fs.createWriteStream("voice.mp3");
+	var request = http.get(query, function(response) {
+	  	var resp = response.pipe(file);
+	  	resp.on('close', function () { 
+	  		var url = 'http://'+ipAddress+':5000/voice.mp3';
+			setSensor("AudioPlayer", "ExecuteCommand", {ElementName: "Lecteur_Audio", Command: "play", Argument: url});
+	  	});
+	});
 }
