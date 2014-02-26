@@ -155,7 +155,13 @@ function distFrom(lat1, lng1, lat2, lng2) {
 
 //Events handling
 handlePositionChange = function(){
-	var d = distFrom(sensor['Android'].positionX, sensor['Android'].positionY, homePositionX, homePositionY);
+	var last_pos = sensor['Android_GPS'][sensor['Android_GPS'].length-1];
+	var d = distFrom(
+		last_pos.latitude, 
+		last_pos.longitude, 
+		homePosition.latitude, 
+		homePosition.longitude
+	);
 	var val = 'off';
 	if(d < distanceForLight)
 		val = 'on';
