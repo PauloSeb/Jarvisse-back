@@ -10,6 +10,14 @@ sensor['Android_GPS'] =  new Array();
 sensor['Android_Voice'] =  new Array();
 sensor['Android_Accelero'] =  new Array();
 
+var homePosition = {latitude:0, longitude: 0};
+var distanceForLight = 50; //en mètres
+
+var lastKitchenAppearance = 0;
+var kitchenFirstHour = 18;
+var kitchenLastHour = 22;
+
+
 //XML
 var xml2js = require('xml2js');
 
@@ -62,6 +70,28 @@ app.post('/setAudioPlayer', function(req, res){
 				setAudioPlayer(req.body.command);
 				break;
 		}
+		res.statusCode = 200;
+		res.send("ok");
+	}
+});
+
+app.post('/setLampeBureau', function(req, res){
+	if(!req.body.hasOwnProperty('toggle')) {
+		res.statusCode = 400;
+		return res.send('Error 400 : switch value missing!');
+	} else {
+		setLampeBureau(req.body.toggle);
+		res.statusCode = 200;
+		res.send("ok");
+	}
+});
+
+app.post('/setLampeHalogene', function(req, res){
+	if(!req.body.hasOwnProperty('toggle')) {
+		res.statusCode = 400;
+		return res.send('Error 400 : switch value missing!');
+	} else {
+		setLampeHalogene(req.body.toggle);
 		res.statusCode = 200;
 		res.send("ok");
 	}
@@ -146,8 +176,20 @@ cp.on("device", function(device){
 	}
 });
 
-function getText() {
-	return sensor['PhotoTextViewer'].text;
+function getDevice(device) {
+	return sensor[device];
+}
+
+function setDevice(device, service, action, parameters, sensorName) {
+	uPnPdevices[device].services[service].callAction(action, parameters, function(err, buf) {
+		if (err) {
+			console.log("got err when performing action: " + err + " => " + buf);
+		} else {
+			console.log("got SOAP reponse: " + buf);
+			if(sensor[sensorName] == null) sensor[sensorName] = new Array();
+			sensor[sensorName].push({date: new Date(), value: buf});
+		}
+	});
 }
 
 function getLastText() {
@@ -178,7 +220,7 @@ function setPicture(url) {
 }
 
 function getAudioPlayer() {
-	return sensor['AudioPlayer'];
+	return getDevice('AudioPlayer');
 }
 
 function getLastAudioPlayer() {
@@ -198,13 +240,44 @@ function setAudioPlayer(command, url) {
 	});
 }
 
+function getRFID() {
+	return getDevice('RFID');
+}
+
+function getLastRFID() {
+	return (getRFID())[getRFID().length - 1];
+}
+
+function getLampeBureau() {
+	return getDevice('LampeBureau');
+}
+
+function getLastLampeBureau() {
+	return (getDevice('LampeBureau'))[getDevice('LampeBureau').length - 1];
+}
+
+function setLampeBureau(toggle) {
+	setDevice('urn:schemas-upnp-org:device:X10CM11:1', 'urn:schemas-upnp-org:serviceId:2', "ExecuteCommand", {ElementName: "Lampe_Bureau", Command: toggle }, "LampeBureau");
+}
+
+function getLampeHalogene() {
+	return getDevice('LampeHalogene');
+}
+
+function getLastLampeHalogene() {
+	return (getDevice('LampeHalogene'))[getDevice('LampeHalogene').length - 1];
+}
+
+function setLampeHalogene(toggle) {
+	setDevice('urn:schemas-upnp-org:device:X10CM11:1', 'urn:schemas-upnp-org:serviceId:2', "ExecuteCommand", {ElementName: "Lampe_Halogene", Command: toggle }, "LampeHalogene");
+}
+
 //Events
 var events = require('events');
 var eventEmitter = new events.EventEmitter();
 
 
-var homePositionX = 0;
-var homePositionY = 0;
+
 
 distance = function(x1, y1, x2, y2){
 	return Math.sqrt(Math.pow(x1-x2,2) + Math.pow(y1-y2));
@@ -228,13 +301,22 @@ function distFrom(lat1, lng1, lat2, lng2) {
 handlePositionChange = function(){
 	var d = distFrom(sensor['Android'].positionX, sensor['Android'].positionY, homePositionX, homePositionY);
 	var val = 'off';
-	if(d < 50)
+	if(d < distanceForLight)
 		val = 'on';
 	setSensor('Lamp', 'power', val);
 }
 
+handleUserInKitchen = function(){
+	if(sensor['userInKitchen'].isPresent){
+		if(Date.now() - lastKitchenAppearance)
+
+		lastKitchenAppearance = Date.now();
+	}
+}
+
 //events availables
 eventEmitter.on('positionChange', handlePositionChange);
+eventEmitter.on('userInKitchen', handleUserInKitchen);
 
 /*--------------------------------------------------    Service REST    --------------------------------------------------------*/
 
@@ -252,6 +334,7 @@ app.post('/geoloc', function(sReq, sRes){
 		var longitude = decodeDataFromAndroid(sReq.body.latitude);
 		var date = new Date();
 		sensor['Android_GPS'].push({position : {latitude: latitude, longitude: longitude}, date: date});
+		events.emit('positionChange');
 		console.log("sensor['Android_GPS']: "+ JSON.stringify(sensor['Android_GPS']));
 		sRes.statusCode = 200;
 		sRes.send("Requete geoloc : OK");
