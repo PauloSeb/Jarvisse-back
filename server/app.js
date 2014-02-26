@@ -1,7 +1,11 @@
 //Global vars
 var uPnPdevices = new Array();
 var sensor = new Array();
+sensor['PhotoTextViewer'] = new Object();
+sensor['PhotoTextViewer'].text = new Array();
+sensor['PhotoTextViewer'].picture = new Array();
 sensor['RFID'] = new Array();
+sensor['AudioPlayer'] = new Array();
 
 //XML
 var xml2js = require('xml2js');
@@ -10,7 +14,53 @@ var xml2js = require('xml2js');
 var express = require('express');
 var app = express();
 app.listen(5000);
+app.use(express.bodyParser());
 console.log("Server listening on port 5000");
+
+app.post('/setText', function(req, res){
+	if(!req.body.hasOwnProperty('text')) {
+		res.statusCode = 400;
+		return res.send('Error 400 : text value missing!');
+	} else {
+		setText(req.body.text);
+		res.statusCode = 200;
+		res.send("ok");
+	}
+});
+
+app.post('/setPicture', function(req, res){
+	if(!req.body.hasOwnProperty('picture')) {
+		res.statusCode = 400;
+		return res.send('Error 400 : picture url missing');
+	} else {
+		setPicture(req.body.picture);
+		res.statusCode = 200;
+		res.send("ok");
+	}
+});
+
+app.post('/setAudioPlayer', function(req, res){
+	if(!req.body.hasOwnProperty('command')) {
+		res.statusCode = 400;
+		return res.send('Error 400 : command missing');
+	} else {
+		switch(req.body.command) {
+			case 'play':
+				if(!req.body.hasOwnProperty('argument')) {
+					res.statusCode = 400;
+					return res.send('Error 400 : mp3 url as argument missing');
+				} else {
+					setAudioPlayer(req.body.command, req.body.argument);
+				}
+				break;
+			default:
+				setAudioPlayer(req.body.command);
+				break;
+		}
+		res.statusCode = 200;
+		res.send("ok");
+	}
+});
 
 //UPnP
 var UpnpControlPoint = require("../lib/upnp-controlpoint").UpnpControlPoint;
@@ -19,7 +69,8 @@ cp.search();
 cp.on("device", function(device){
 	uPnPdevices[device.deviceType] = device;
 	switch(device.deviceType) {
-		case 'urn:schemas-upnp-org:device:PhotoTextViewer:1':
+		//Not implemented
+		/*case 'urn:schemas-upnp-org:device:PhotoTextViewer:1':
 			device.services['urn:schemas-upnp-org:serviceId:1'].subscribe(function() {
 				device.services['urn:schemas-upnp-org:serviceId:1'].on("stateChange", function(value) {
 					console.log("PhotoTextViewer:1");
@@ -32,23 +83,24 @@ cp.on("device", function(device){
 					console.log(JSON.stringify(value));
 				});
 			});
-		break;
-		case 'urn:schemas-upnp-org:device:AudioPlayer:1':
+		break;*/
+		//Not implemented
+		/*case 'urn:schemas-upnp-org:device:AudioPlayer:1':
 			device.services['urn:schemas-upnp-org:serviceId:1'].subscribe(function() {
 				device.services['urn:schemas-upnp-org:serviceId:1'].on("stateChange", function(value) {
 					console.log("AudioPlayer:1");
 					console.log(JSON.stringify(value));
 				});
 			});
-		break;
-		case 'urn:schemas-upnp-org:device:X10CM11:1':
+		break;*/
+		//Not implemented
+		/*case 'urn:schemas-upnp-org:device:X10CM11:1':
 			device.services['urn:schemas-upnp-org:serviceId:2'].subscribe(function() {
 				device.services['urn:schemas-upnp-org:serviceId:2'].on("stateChange", function(value) {
 					console.log("X10CM11:1");
-					console.log(JSON.stringify(value));
 				});
 			});
-		break;
+		break;*/
 		case 'urn:schemas-upnp-org:device:Phidget:1':
 			device.services['urn:schemas-upnp-org:serviceId:1'].subscribe(function() {
 				device.services['urn:schemas-upnp-org:serviceId:1'].on("stateChange", function(value) {
@@ -87,6 +139,58 @@ cp.on("device", function(device){
 		break;
 	}
 });
+
+function getText() {
+	return sensor['PhotoTextViewer'].text;
+}
+
+function getLastText() {
+	return (getText())[getText().length - 1];
+}
+
+function setText(text) {
+	uPnPdevices['urn:schemas-upnp-org:device:PhotoTextViewer:1'].services['urn:schemas-upnp-org:serviceId:2'].callAction("SetText", { Text: text }, function(err, buf) {
+		if (err) {
+			console.log("got err when performing action: " + err + " => " + buf);
+		} else {
+			console.log("got SOAP reponse: " + buf);
+			sensor['PhotoTextViewer'].text.push({date: new Date(), value: text});
+			console.log(getLastText());
+		}
+	});
+}
+
+function setPicture(url) {
+	uPnPdevices['urn:schemas-upnp-org:device:PhotoTextViewer:1'].services['urn:schemas-upnp-org:serviceId:1'].callAction("SetPicture", { Picture: url }, function(err, buf) {
+		if (err) {
+			console.log("got err when performing action: " + err + " => " + buf);
+		} else {
+			console.log("got SOAP reponse: " + buf);
+			sensor['PhotoTextViewer'].picture.push({date: new Date(), value: url});
+		}
+	});
+}
+
+function getAudioPlayer() {
+	return sensor['AudioPlayer'];
+}
+
+function getLastAudioPlayer() {
+	return (getAudioPlayer())[getAudioPlayer().length - 1];
+}
+
+function setAudioPlayer(command, url) {
+	console.log(command+" "+url);
+	uPnPdevices['urn:schemas-upnp-org:device:AudioPlayer:1'].services['urn:schemas-upnp-org:serviceId:1'].callAction("ExecuteCommand", { ElementName: "Lecteur_Audio", Command: command, Argument: url }, function(err, buf) {
+		if (err) {
+			console.log("got err when performing action: " + err + " => " + buf);
+		} else {
+			console.log("got SOAP reponse: " + buf);
+			sensor['AudioPlayer'].push({date: new Date(), command: command, argument: url});
+			getLastAudioPlayer();
+		}
+	});
+}
 
 //Events
 var events = require('events');
