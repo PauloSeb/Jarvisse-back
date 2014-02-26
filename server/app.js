@@ -1,9 +1,6 @@
 //Global vars
 var uPnPdevices = new Array();
 var sensor = new Array();
-sensor['Android_GPS'] =  new Array();
-sensor['Android_Voice'] =  new Array();
-sensor['Android_Accelero'] =  new Array();
 
 var homePosition = {latitude:0, longitude: 0};
 var distanceForLight = 50; //en mètres
@@ -230,6 +227,8 @@ app.post('/geoloc', function(sReq, sRes){
 		return sRes.send('Error 400: Post syntax incorrect.');
 	}
 	else {
+		if(sensor['Android_GPS'] == null) sensor['Android_GPS'] =  new Array();
+			
 		var latitude = decodeDataFromAndroid(sReq.body.latitude);
 		var longitude = decodeDataFromAndroid(sReq.body.latitude);
 		var date = new Date();
@@ -252,6 +251,8 @@ app.post('/voix', function(sReq, sRes){
 		return sRes.send('Error 400: Post syntax incorrect.');
 	}
 	else {
+		if(sensor['Android_Voice'] == null) sensor['Android_Voice'] =  new Array();
+
 		var voix = decodeDataFromAndroid(sReq.body.voix);
 		console.log("voix : " + voix);
 		var date = new Date();
@@ -273,6 +274,8 @@ app.post('/accelero', function(sReq, sRes){
 		return sRes.send('Error 400: Post syntax incorrect.');
 	}
 	else {
+		if(sensor['Android_Accelero'] == null) sensor['Android_Accelero'] =  new Array();
+
 		var x = decodeDataFromAndroid(sReq.body.x);
 		var y = decodeDataFromAndroid(sReq.body.y);
 		var z = decodeDataFromAndroid(sReq.body.z);
