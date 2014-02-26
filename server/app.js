@@ -9,6 +9,14 @@ sensor['AudioPlayer'] = new Array();
 sensor['Android_GPS'] =  new Array();
 sensor['Android_Voice'] =  new Array();
 
+var homePosition = {latitude:0, longitude: 0};
+var distanceForLight = 50; //en mètres
+
+var lastKitchenAppearance = 0;
+var kitchenFirstHour = 18;
+var kitchenLastHour = 22;
+
+
 //XML
 var xml2js = require('xml2js');
 
@@ -267,13 +275,6 @@ var events = require('events');
 var eventEmitter = new events.EventEmitter();
 
 
-var homePositionX = 0;
-var homePositionY = 0;
-var distanceForLight = 50; //en mètres
-
-var lastKitchenAppearance = 0;
-var kitchenFirstHour = 18;
-var kitchenLastHour = 22;
 
 
 distance = function(x1, y1, x2, y2){
@@ -331,6 +332,7 @@ app.post('/geoloc', function(sReq, sRes){
 		var longitude = sReq.body.latitude;
 		var date = new Date();
 		sensor['Android_GPS'].push({position : {latitude: latitude, longitude: longitude}, date: date});
+		events.emit('positionChange');
 		console.log("sensor['Android_GPS']: "+ JSON.stringify(sensor['Android_GPS']));
 		sRes.statusCode = 200;
 		sRes.send("Requete geoloc : OK");
