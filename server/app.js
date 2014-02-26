@@ -5,8 +5,9 @@ sensor['PhotoTextViewer'] = new Object();
 sensor['PhotoTextViewer'].text = new Array();
 sensor['PhotoTextViewer'].picture = new Array();
 sensor['RFID'] = new Array();
-sensor['Android_GPS'] =  new Array();
 sensor['AudioPlayer'] = new Array();
+sensor['Android_GPS'] =  new Array();
+sensor['Android_Voice'] =  new Array();
 
 //XML
 var xml2js = require('xml2js');
@@ -233,11 +234,9 @@ handlePositionChange = function(){
 //events availables
 eventEmitter.on('positionChange', handlePositionChange);
 
-});
-
 /*--------------------------------------------------    Service REST    --------------------------------------------------------*/
 
-//Position GPS
+//Position GPS Android
 app.post('/geoloc', function(sReq, sRes){
 	console.log("Requete recu: "+ JSON.stringify(sReq.body));
 
@@ -253,7 +252,27 @@ app.post('/geoloc', function(sReq, sRes){
 		sensor['Android_GPS'].push({position : {latitude: latitude, longitude: longitude}, date: date});
 		console.log("sensor['Android_GPS']: "+ JSON.stringify(sensor['Android_GPS']));
 		sRes.statusCode = 200;
-		sRes.send("OK");
+		sRes.send("Requete geoloc : OK");
+	}
+
+});
+
+//Voice Android
+app.post('/voix', function(sReq, sRes){
+	console.log("Requete recu: "+ JSON.stringify(sReq.body));
+
+	//Verifie qu'on a les parametres requis
+	if(!sReq.body.hasOwnProperty('voix')) {
+		sRes.statusCode = 400;
+		return sRes.send('Error 400: Post syntax incorrect.');
+	}
+	else {
+		var voix = sReq.body.voix;
+		var date = new Date();
+		sensor['Android_Voice'].push({voix: voix, date: date});
+		console.log("sensor['Android_Voice']: "+ JSON.stringify(sensor['Android_Voice']));
+		sRes.statusCode = 200;
+		sRes.send("Requete voix : OK");
 	}
 
 });
