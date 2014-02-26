@@ -1,4 +1,5 @@
-//Global vars
+/*--------------------------------------------------    Global Vars    --------------------------------------------------------*/
+var xml2js = require('xml2js');
 var uPnPdevices = new Array();
 var sensor = new Array();
 
@@ -9,20 +10,8 @@ var lastKitchenAppearance = 0;
 var kitchenFirstHour = 18;
 var kitchenLastHour = 22;
 
+/*--------------------------------------------------    UPnP    --------------------------------------------------------*/
 
-//XML
-var xml2js = require('xml2js');
-
-//REST
-var express = require('express');
-var app = express();
-//app.use(express.bodyParser());
-app.use(express.urlencoded());
-app.use(express.json());
-app.listen(5000);
-console.log("Server listening on port 5000");
-
-//UPnP
 var UpnpControlPoint = require("../lib/upnp-controlpoint").UpnpControlPoint;
 var cp = new UpnpControlPoint();
 cp.search();
@@ -85,21 +74,9 @@ function listSensor() {
 	return Object.keys(sensor);
 }
 
-app.get('/listSensor', function(req, res) {
-	res.send(JSON.stringify(listSensor()));
-});
-
 function getSensor(device) {
 	return sensor[device];
 }
-
-app.get('/getSensor', function(req, res) {
-	if(!req.query.hasOwnProperty('sensor')) {
-		res.statusCode = 400;
-		return res.send('Error 400 : sensor missing');
-	}
-	res.send(JSON.stringify(getSensor(req.query.sensor)));
-});
 
 function setSensor(sensorName, action, parameters) {
 	switch(sensorName) {
@@ -121,24 +98,6 @@ function setSensor(sensorName, action, parameters) {
 		default:
 	}
 }
-
-app.post('/setSensor', function(req, res){
-	console.log(req.body);
-	if(!req.body.hasOwnProperty('sensor')) {
-		res.statusCode = 400;
-		return res.send('Set sensor : ' + listSensor());
-	}
-	if(!req.body.hasOwnProperty('action')) {
-		res.statusCode = 400;
-		return res.send('Action missing (usually ElementName)');
-	}
-	if(!req.body.hasOwnProperty('parameters')) {
-		res.statusCode = 400;
-		return res.send('Parameters missing');
-	}
-	setSensor(req.body.sensor, req.body.action, req.body.parameters);
-	res.send(JSON.stringify({sensor: req.sensor, action: req.body.action, parameters: req.body.parameters}));
-});
 
 function setDevice(device, service, action, parameters, sensorName) {
 	uPnPdevices[device].services[service].callAction(action, parameters, function(err, buf) {
@@ -169,7 +128,7 @@ function setDeviceResponseHandler(sensorName, action, parameters, reponse) {
 	}
 }
 
-//Events
+/*--------------------------------------------------    Events    --------------------------------------------------------*/
 var events = require('events');
 var eventEmitter = new events.EventEmitter();
 
@@ -216,6 +175,60 @@ eventEmitter.on('positionChange', handlePositionChange);
 eventEmitter.on('userInKitchen', handleUserInKitchen);
 
 /*--------------------------------------------------    Service REST    --------------------------------------------------------*/
+
+//Setup
+var express = require('express');
+var app = express();
+app.use(express.urlencoded());
+app.use(express.json());
+app.listen(5000);
+console.log("REST Server listening on port 5000");
+
+//Liste tous les capteurs ayant des données
+app.get('/listSensor', function(req, res) {
+	res.send(JSON.stringify(listSensor()));
+});
+
+//Récupérer toutes les données d'un capteur
+app.get('/getSensor', function(req, res) {
+	if(!req.query.hasOwnProperty('sensor')) {
+		res.statusCode = 400;
+		return res.send('Error 400 : sensor missing');
+	}
+	if(!req.query.hasOwnProperty('index')) {
+		res.send(JSON.stringify((getSensor(req.query.sensor))[req.query.index]));
+	} else {
+		res.send(JSON.stringify(getSensor(req.query.sensor)));
+	}
+});
+
+//Récupérer la dernière donnée d'un capteur
+app.get('/getSensorLast', function(req, res) {
+	if(!req.query.hasOwnProperty('sensor')) {
+		res.statusCode = 400;
+		return res.send('Error 400 : sensor missing');
+	}
+	res.send(JSON.stringify((getSensor(req.query.sensor))[(getSensor(req.query.sensor)).length-1]));
+});
+
+//Actionner un device
+app.post('/setSensor', function(req, res){
+	console.log(req.body);
+	if(!req.body.hasOwnProperty('sensor')) {
+		res.statusCode = 400;
+		return res.send('Set sensor : ' + listSensor());
+	}
+	if(!req.body.hasOwnProperty('action')) {
+		res.statusCode = 400;
+		return res.send('Action missing (usually ElementName)');
+	}
+	if(!req.body.hasOwnProperty('parameters')) {
+		res.statusCode = 400;
+		return res.send('Parameters missing');
+	}
+	setSensor(req.body.sensor, req.body.action, req.body.parameters);
+	res.send(JSON.stringify({sensor: req.sensor, action: req.body.action, parameters: req.body.parameters}));
+});
 
 //Position GPS Android
 app.post('/geoloc', function(sReq, sRes){
