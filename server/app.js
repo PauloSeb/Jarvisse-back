@@ -8,6 +8,7 @@ sensor['RFID'] = new Array();
 sensor['AudioPlayer'] = new Array();
 sensor['Android_GPS'] =  new Array();
 sensor['Android_Voice'] =  new Array();
+sensor['Android_Accelero'] =  new Array();
 
 //XML
 var xml2js = require('xml2js');
@@ -15,9 +16,10 @@ var xml2js = require('xml2js');
 //REST
 var express = require('express');
 var app = express();
-app.use(express.bodyParser());
+//app.use(express.bodyParser());
+app.use(express.urlencoded());
+app.use(express.json());
 app.listen(5000);
-app.use(express.bodyParser());
 console.log("Server listening on port 5000");
 
 app.post('/setText', function(req, res){
@@ -246,8 +248,8 @@ app.post('/geoloc', function(sReq, sRes){
 		return sRes.send('Error 400: Post syntax incorrect.');
 	}
 	else {
-		var latitude = sReq.body.latitude;
-		var longitude = sReq.body.latitude;
+		var latitude = decodeDataFromAndroid(sReq.body.latitude);
+		var longitude = decodeDataFromAndroid(sReq.body.latitude);
 		var date = new Date();
 		sensor['Android_GPS'].push({position : {latitude: latitude, longitude: longitude}, date: date});
 		console.log("sensor['Android_GPS']: "+ JSON.stringify(sensor['Android_GPS']));
@@ -267,7 +269,8 @@ app.post('/voix', function(sReq, sRes){
 		return sRes.send('Error 400: Post syntax incorrect.');
 	}
 	else {
-		var voix = sReq.body.voix;
+		var voix = decodeDataFromAndroid(sReq.body.voix);
+		console.log("voix : " + voix);
 		var date = new Date();
 		sensor['Android_Voice'].push({voix: voix, date: date});
 		console.log("sensor['Android_Voice']: "+ JSON.stringify(sensor['Android_Voice']));
@@ -276,3 +279,29 @@ app.post('/voix', function(sReq, sRes){
 	}
 
 });
+
+//Accelero Android
+app.post('/accelero', function(sReq, sRes){
+	console.log("Requete recu: "+ JSON.stringify(sReq.body));
+
+	//Verifie qu'on a les parametres requis
+	if(!sReq.body.hasOwnProperty('x') || !sReq.body.hasOwnProperty('y') || !sReq.body.hasOwnProperty('z')) {
+		sRes.statusCode = 400;
+		return sRes.send('Error 400: Post syntax incorrect.');
+	}
+	else {
+		var x = decodeDataFromAndroid(sReq.body.x);
+		var y = decodeDataFromAndroid(sReq.body.y);
+		var z = decodeDataFromAndroid(sReq.body.z);
+		var date = new Date();
+		sensor['Android_Accelero'].push({position : {x: x, y: y, z: z}, date: date});
+		console.log("sensor['Android_Accelero']: "+ JSON.stringify(sensor['Android_Accelero']));
+		sRes.statusCode = 200;
+		sRes.send("Requete accelero : OK");
+	}
+
+});
+
+function decodeDataFromAndroid(data){
+	return decodeURI(data.split('+').join('%20'));
+}
