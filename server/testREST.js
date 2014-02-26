@@ -12,14 +12,19 @@ var requestify = require('requestify');
     console.log(response.getBody());
 });*/
 
-requestify.post('http://localhost:5000/setAudioPlayer', {command: "play", argument: "http://www.stephaniequinn.com/Music/Canon.mp3"}).then(function(response) {
+/*requestify.post('http://localhost:5000/setAudioPlayer', {command: "play", argument: "http://www.stephaniequinn.com/Music/Canon.mp3"}).then(function(response) {
 	console.log(response);
     // Get the response body (JSON parsed or jQuery object for XMLs)
     console.log(response.getBody());
-});
+});*/
 
 /*requestify.post('http://localhost:5000/setAudioPlayer', {command: "stop"}).then(function(response) {
 	console.log(response);
     // Get the response body (JSON parsed or jQuery object for XMLs)
     console.log(response.getBody());
 });*/
+
+requestify.post('http://localhost:5000/setSensor', {sensor: "AudioPlayer", action: "ExecuteCommand", parameters: {ElementName: "Lecteur_Audio", Command: "stop"}}).then(function(response) {
+    // Get the response body (JSON parsed or jQuery object for XMLs)
+    console.log(response.getBody());
+});

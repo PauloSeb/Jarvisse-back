@@ -1,11 +1,6 @@
 //Global vars
 var uPnPdevices = new Array();
 var sensor = new Array();
-sensor['PhotoTextViewer'] = new Object();
-sensor['PhotoTextViewer'].text = new Array();
-sensor['PhotoTextViewer'].picture = new Array();
-sensor['RFID'] = new Array();
-sensor['AudioPlayer'] = new Array();
 sensor['Android_GPS'] =  new Array();
 sensor['Android_Voice'] =  new Array();
 sensor['Android_Accelero'] =  new Array();
@@ -30,73 +25,6 @@ app.use(express.json());
 app.listen(5000);
 console.log("Server listening on port 5000");
 
-app.post('/setText', function(req, res){
-	if(!req.body.hasOwnProperty('text')) {
-		res.statusCode = 400;
-		return res.send('Error 400 : text value missing!');
-	} else {
-		setText(req.body.text);
-		res.statusCode = 200;
-		res.send("ok");
-	}
-});
-
-app.post('/setPicture', function(req, res){
-	if(!req.body.hasOwnProperty('picture')) {
-		res.statusCode = 400;
-		return res.send('Error 400 : picture url missing');
-	} else {
-		setPicture(req.body.picture);
-		res.statusCode = 200;
-		res.send("ok");
-	}
-});
-
-app.post('/setAudioPlayer', function(req, res){
-	if(!req.body.hasOwnProperty('command')) {
-		res.statusCode = 400;
-		return res.send('Error 400 : command missing');
-	} else {
-		switch(req.body.command) {
-			case 'play':
-				if(!req.body.hasOwnProperty('argument')) {
-					res.statusCode = 400;
-					return res.send('Error 400 : mp3 url as argument missing');
-				} else {
-					setAudioPlayer(req.body.command, req.body.argument);
-				}
-				break;
-			default:
-				setAudioPlayer(req.body.command);
-				break;
-		}
-		res.statusCode = 200;
-		res.send("ok");
-	}
-});
-
-app.post('/setLampeBureau', function(req, res){
-	if(!req.body.hasOwnProperty('toggle')) {
-		res.statusCode = 400;
-		return res.send('Error 400 : switch value missing!');
-	} else {
-		setLampeBureau(req.body.toggle);
-		res.statusCode = 200;
-		res.send("ok");
-	}
-});
-
-app.post('/setLampeHalogene', function(req, res){
-	if(!req.body.hasOwnProperty('toggle')) {
-		res.statusCode = 400;
-		return res.send('Error 400 : switch value missing!');
-	} else {
-		setLampeHalogene(req.body.toggle);
-		res.statusCode = 200;
-		res.send("ok");
-	}
-});
-
 //UPnP
 var UpnpControlPoint = require("../lib/upnp-controlpoint").UpnpControlPoint;
 var cp = new UpnpControlPoint();
@@ -105,39 +33,20 @@ cp.on("device", function(device){
 	uPnPdevices[device.deviceType] = device;
 
 	switch(device.deviceType) {
-		//Not implemented
-		/*case 'urn:schemas-upnp-org:device:PhotoTextViewer:1':
-			device.services['urn:schemas-upnp-org:serviceId:1'].subscribe(function() {
-				device.services['urn:schemas-upnp-org:serviceId:1'].on("stateChange", function(value) {
-					console.log("PhotoTextViewer:1");
-					console.log(JSON.stringify(value));
-				});
-			});
-			device.services['urn:schemas-upnp-org:serviceId:2'].subscribe(function() {
-				device.services['urn:schemas-upnp-org:serviceId:2'].on("stateChange", function(value) {
-					console.log("PhotoTextViewer:2");
-					console.log(JSON.stringify(value));
-				});
-			});
-		break;*/
-		//Not implemented
-		/*case 'urn:schemas-upnp-org:device:AudioPlayer:1':
-			device.services['urn:schemas-upnp-org:serviceId:1'].subscribe(function() {
-				device.services['urn:schemas-upnp-org:serviceId:1'].on("stateChange", function(value) {
-					console.log("AudioPlayer:1");
-					console.log(JSON.stringify(value));
-				});
-			});
-		break;*/
-		//Not implemented
-		/*case 'urn:schemas-upnp-org:device:X10CM11:1':
-			device.services['urn:schemas-upnp-org:serviceId:2'].subscribe(function() {
-				device.services['urn:schemas-upnp-org:serviceId:2'].on("stateChange", function(value) {
-					console.log("X10CM11:1");
-				});
-			});
-		break;*/
+		case 'urn:schemas-upnp-org:device:PhotoTextViewer:1':
+			sensor['PhotoTextViewer'] = new Array();
+			sensor['PhotoTextViewer'].text = new Array();
+			sensor['PhotoTextViewer'].picture = new Array();
+		break;
+		case 'urn:schemas-upnp-org:device:AudioPlayer:1':
+			sensor['AudioPlayer'] = new Array();
+		break;
+		case 'urn:schemas-upnp-org:device:X10CM11:1':
+			sensor['Lampe_Bureau'] = new Array();
+			sensor['Lampe_Halogene'] = new Array();
+		break;
 		case 'urn:schemas-upnp-org:device:Phidget:1':
+			sensor['RFID'] = new Array();
 			device.services['urn:schemas-upnp-org:serviceId:1'].subscribe(function() {
 				device.services['urn:schemas-upnp-org:serviceId:1'].on("stateChange", function(value) {
 					var xml = value.Notification;
@@ -149,7 +58,6 @@ cp.on("device", function(device){
 								return;
 							}
 							sensor['RFID'].push(result);
-							console.log("RFID: user id " + result.tagInfo.$.id + " ("+result.tagInfo.$.value+") " + result.tagInfo.$.action + " on "+ result.tagInfo.$.date);
 							/*
 								value template (gained/lost):
 								{ tagInfo: 
@@ -176,9 +84,64 @@ cp.on("device", function(device){
 	}
 });
 
-function getDevice(device) {
+function listSensor() {
+	return Object.keys(sensor);
+}
+
+app.get('/listSensor', function(req, res) {
+	res.send(JSON.stringify(listSensor()));
+});
+
+function getSensor(device) {
 	return sensor[device];
 }
+
+app.get('/getSensor', function(req, res) {
+	if(!req.query.hasOwnProperty('sensor')) {
+		res.statusCode = 400;
+		return res.send('Error 400 : sensor missing');
+	}
+	res.send(JSON.stringify(getSensor(req.query.sensor)));
+});
+
+function setSensor(sensorName, action, parameters) {
+	switch(sensorName) {
+		case 'AudioPlayer':
+			setDevice('urn:schemas-upnp-org:device:AudioPlayer:1', 'urn:schemas-upnp-org:serviceId:1', action, parameters, 'AudioPlayer');
+			break;
+		case 'PhotoTextViewer':
+			if(action=="SetText")
+				setDevice('urn:schemas-upnp-org:device:PhotoTextViewer:1', 'urn:schemas-upnp-org:serviceId:1', "SetText", parameters, 'PhotoTextViewer');
+			if(action=="SetPicture")
+				setDevice('urn:schemas-upnp-org:device:PhotoTextViewer:1', 'urn:schemas-upnp-org:serviceId:2', "SetPicture", parameters, 'PhotoTextViewer');
+			break;
+		case 'Lampe_Bureau':
+			setDevice('urn:schemas-upnp-org:device:X10CM11:1', 'urn:schemas-upnp-org:serviceId:2', action, parameters, 'Lampe_Bureau');
+			break;
+		case 'Lampe_Halogene':
+			setDevice('urn:schemas-upnp-org:device:X10CM11:1', 'urn:schemas-upnp-org:serviceId:2', action, parameters, 'Lampe_Halogene');
+			break;
+		default:
+	}
+}
+
+app.post('/setSensor', function(req, res){
+	console.log(req.body);
+	if(!req.body.hasOwnProperty('sensor')) {
+		res.statusCode = 400;
+		return res.send('Set sensor : ' + listSensor());
+	}
+	if(!req.body.hasOwnProperty('action')) {
+		res.statusCode = 400;
+		return res.send('Action missing (usually ElementName)');
+	}
+	if(!req.body.hasOwnProperty('parameters')) {
+		res.statusCode = 400;
+		return res.send('Parameters missing');
+	}
+	setSensor(req.body.sensor, req.body.action, req.body.parameters);
+	res.send(JSON.stringify({sensor: req.sensor, action: req.body.action, parameters: req.body.parameters}));
+});
 
 function setDevice(device, service, action, parameters, sensorName) {
 	uPnPdevices[device].services[service].callAction(action, parameters, function(err, buf) {
@@ -186,90 +149,27 @@ function setDevice(device, service, action, parameters, sensorName) {
 			console.log("got err when performing action: " + err + " => " + buf);
 		} else {
 			console.log("got SOAP reponse: " + buf);
-			if(sensor[sensorName] == null) sensor[sensorName] = new Array();
-			sensor[sensorName].push({date: new Date(), value: buf});
+			setDeviceResponseHandler(sensorName, action, parameters, buf);
 		}
 	});
 }
 
-function getLastText() {
-	return (getText())[getText().length - 1];
-}
-
-function setText(text) {
-	uPnPdevices['urn:schemas-upnp-org:device:PhotoTextViewer:1'].services['urn:schemas-upnp-org:serviceId:2'].callAction("SetText", { Text: text }, function(err, buf) {
-		if (err) {
-			console.log("got err when performing action: " + err + " => " + buf);
-		} else {
-			console.log("got SOAP reponse: " + buf);
-			sensor['PhotoTextViewer'].text.push({date: new Date(), value: text});
-			console.log(getLastText());
-		}
-	});
-}
-
-function setPicture(url) {
-	uPnPdevices['urn:schemas-upnp-org:device:PhotoTextViewer:1'].services['urn:schemas-upnp-org:serviceId:1'].callAction("SetPicture", { Picture: url }, function(err, buf) {
-		if (err) {
-			console.log("got err when performing action: " + err + " => " + buf);
-		} else {
-			console.log("got SOAP reponse: " + buf);
-			sensor['PhotoTextViewer'].picture.push({date: new Date(), value: url});
-		}
-	});
-}
-
-function getAudioPlayer() {
-	return getDevice('AudioPlayer');
-}
-
-function getLastAudioPlayer() {
-	return (getAudioPlayer())[getAudioPlayer().length - 1];
-}
-
-function setAudioPlayer(command, url) {
-	console.log(command+" "+url);
-	uPnPdevices['urn:schemas-upnp-org:device:AudioPlayer:1'].services['urn:schemas-upnp-org:serviceId:1'].callAction("ExecuteCommand", { ElementName: "Lecteur_Audio", Command: command, Argument: url }, function(err, buf) {
-		if (err) {
-			console.log("got err when performing action: " + err + " => " + buf);
-		} else {
-			console.log("got SOAP reponse: " + buf);
-			sensor['AudioPlayer'].push({date: new Date(), command: command, argument: url});
-			getLastAudioPlayer();
-		}
-	});
-}
-
-function getRFID() {
-	return getDevice('RFID');
-}
-
-function getLastRFID() {
-	return (getRFID())[getRFID().length - 1];
-}
-
-function getLampeBureau() {
-	return getDevice('LampeBureau');
-}
-
-function getLastLampeBureau() {
-	return (getDevice('LampeBureau'))[getDevice('LampeBureau').length - 1];
-}
-
-function setLampeBureau(toggle) {
-	setDevice('urn:schemas-upnp-org:device:X10CM11:1', 'urn:schemas-upnp-org:serviceId:2', "ExecuteCommand", {ElementName: "Lampe_Bureau", Command: toggle }, "LampeBureau");
-}
-
-function getLampeHalogene() {
-	return getDevice('LampeHalogene');
-}
-
-function getLastLampeHalogene() {
-	return (getDevice('LampeHalogene'))[getDevice('LampeHalogene').length - 1];
-}
-
-function setLampeHalogene(toggle) {
-	setDevice('urn:schemas-upnp-org:device:X10CM11:1', 'urn:schemas-upnp-org:serviceId:2', "ExecuteCommand", {ElementName: "Lampe_Halogene", Command: toggle }, "LampeHalogene");
+function setDeviceResponseHandler(sensorName, action, parameters, reponse) {
+	switch(sensorName) {
+		case 'PhotoTextViewer':
+			if(action =="SetText") {
+				sensor['PhotoTextViewer'].text.push({date: new Date(), value: parameters.Text});
+			}
+			if(action =="SetPicture") {
+				sensor['PhotoTextViewer'].picture.push({date: new Date(), value: parameters.Picture});
+			}
+			break;
+		case 'AudioPlayer':
+			sensor['AudioPlayer'].push({date: new Date(), command: action, argument: parameters.url});
+			break;
+		default:
+			sensor[sensorName].push({date: new Date(), value: reponse});
+	}
 }
 
 //Events
