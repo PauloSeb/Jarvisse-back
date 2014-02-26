@@ -51,6 +51,12 @@ var eventEmitter = new events.EventEmitter();
 
 var homePositionX = 0;
 var homePositionY = 0;
+var distanceForLight = 50; //en mètres
+
+var lastKitchenAppearance = 0;
+var kitchenFirstHour = 18;
+var kitchenLastHour = 22;
+
 
 distance = function(x1, y1, x2, y2){
 	return Math.sqrt(Math.pow(x1-x2,2) + Math.pow(y1-y2));
@@ -74,10 +80,19 @@ function distFrom(lat1, lng1, lat2, lng2) {
 handlePositionChange = function(){
 	var d = distFrom(sensor['Android'].positionX, sensor['Android'].positionY, homePositionX, homePositionY);
 	var val = 'off';
-	if(d < 50)
+	if(d < distanceForLight)
 		val = 'on';
 	setSensor('Lamp', 'power', val);
 }
 
+handleUserInKitchen = function(){
+	if(sensor['userInKitchen'].isPresent){
+		if(Date.now() - lastKitchenAppearance)
+
+		lastKitchenAppearance = Date.now();
+	}
+}
+
 //events availables
 eventEmitter.on('positionChange', handlePositionChange);
+eventEmitter.on('userInKitchen', handleUserInKitchen);
