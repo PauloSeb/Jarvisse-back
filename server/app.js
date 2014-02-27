@@ -27,7 +27,6 @@ console.log("IP address : " + (networkInterfaces.en1)[1].address );
 cp.search();
 cp.on("device", function(device){
 	uPnPdevices[device.deviceType] = device;
-
 	switch(device.deviceType) {
 		case 'urn:schemas-upnp-org:device:PhotoTextViewer:1':
 			sensor['PhotoTextViewer'] = new Array();
@@ -116,6 +115,7 @@ function setDevice(device, service, action, parameters, sensorName) {
 		} else {
 			console.log("got SOAP reponse: " + buf);
 			setDeviceResponseHandler(sensorName, action, parameters, buf);
+			eventEmitter.emit('sensorChange', {sensorName: sensorName, action: action, parameters: parameters, buf: buf});
 		}
 	});
 }
@@ -286,7 +286,7 @@ app.post('/geoloc', function(sReq, sRes){
 		var longitude = decodeDataFromAndroid(sReq.body.latitude);
 		var date = new Date();
 		sensor['Android_GPS'].push({position : {latitude: latitude, longitude: longitude}, date: date});
-		events.emit('positionChange');
+		eventEmitter.emit('positionChange');
 		console.log("sensor['Android_GPS']: "+ JSON.stringify(sensor['Android_GPS']));
 		sRes.statusCode = 200;
 		sRes.send("Requete geoloc : OK");
