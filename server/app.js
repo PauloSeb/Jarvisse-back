@@ -40,6 +40,10 @@ cp.on("device", function(device){
 			sensor['Lampe_Bureau'] = new Array();
 			sensor['Lampe_Halogene'] = new Array();
 		break;
+		case 'urn:schemas-upnp-org:device:Accelero:1':
+			sensor['Accelero'] = new Array();
+			setInterval(updateAccelero, 2000);
+			break;
 		case 'urn:schemas-upnp-org:device:Phidget:1':
 			sensor['RFID'] = new Array();
 			device.services['urn:schemas-upnp-org:serviceId:1'].subscribe(function() {
@@ -136,6 +140,49 @@ function setDeviceResponseHandler(sensorName, action, parameters, reponse) {
 		default:
 			sensor[sensorName].push({date: new Date(), value: reponse});
 	}
+}
+
+function updateAccelero() {
+	updateAcceleroOnAxis('X');
+	updateAcceleroOnAxis('Y');
+	updateAcceleroOnAxis('Z');
+}
+
+function updateAcceleroOnAxis(coord) {
+	uPnPdevices['urn:schemas-upnp-org:device:Accelero:1'].services['urn:upnp-org:serviceId:506'].callAction('get'+coord+'Value', {}, function(err, buf) {
+		if (err) {
+			console.log("got err when performing action: " + err + " => " + buf);
+		} else {
+			var xml = buf;
+			var parser = new xml2js.Parser();
+			try {
+				parser.parseString(xml, function(err, result) {
+					if (err) {
+						console.log("got XML parsing err: " + err);
+						return;
+					}
+					switch(coord) {
+						case 'X':
+							var value = result['s:Envelope']['s:Body'][0]['u:getXValueResponse'][0].x[0];
+							sensor['Accelero'].push({date: new Date(), axis: 'x', value: value});
+							console.log('X='+value);
+							break;
+						case 'Y':
+							var value = result['s:Envelope']['s:Body'][0]['u:getYValueResponse'][0].y[0];
+							sensor['Accelero'].push({date: new Date(), axis: 'y', value: value});
+							console.log('Y='+value);
+							break
+						default:
+							var value = result['s:Envelope']['s:Body'][0]['u:getZValueResponse'][0].z[0];
+							sensor['Accelero'].push({date: new Date(), axis: 'z', value: value});
+							console.log('Z='+value);
+					}
+				});
+			} catch (exception) {
+				console.log("Accelero exception: " + exception);
+			}
+		}
+	});
 }
 
 /*--------------------------------------------------    Events    --------------------------------------------------------*/
@@ -236,9 +283,9 @@ app.get('/getSensor', function(req, res) {
 		return res.send('Error 400 : sensor missing');
 	}
 	if(!req.query.hasOwnProperty('index')) {
-		res.send(JSON.stringify((getSensor(req.query.sensor))[req.query.index]));
-	} else {
 		res.send(JSON.stringify(getSensor(req.query.sensor)));
+	} else {
+		res.send(JSON.stringify((getSensor(req.query.sensor))[req.query.index]));
 	}
 });
 
