@@ -1,14 +1,7 @@
 /*--------------------------------------------------    Global Vars    --------------------------------------------------------*/
-var UpnpControlPoint = require("../lib/upnp-controlpoint").UpnpControlPoint;
-var cp = new UpnpControlPoint();
+var xml2js = require('xml2js');
 var uPnPdevices = new Array();
 var sensor = new Array();
-
-var http = require('http');
-var fs = require('fs');
-var path = require('path');
-
-var xml2js = require('xml2js');
 
 var homePosition = {latitude:0, longitude: 0};
 var distanceForLight = 50; //en mètres
@@ -17,13 +10,10 @@ var lastKitchenAppearance = 0;
 var kitchenFirstHour = 18;
 var kitchenLastHour = 22;
 
-/*--------------------------------------------------    IP Adress   --------------------------------------------------------*/
-var os = require( 'os' );
-var networkInterfaces = os.networkInterfaces();
-var ipAddress = (networkInterfaces.en1)[1].address;
-console.log("IP address : " + (networkInterfaces.en1)[1].address );
-
 /*--------------------------------------------------    UPnP    --------------------------------------------------------*/
+
+var UpnpControlPoint = require("../lib/upnp-controlpoint").UpnpControlPoint;
+var cp = new UpnpControlPoint();
 cp.search();
 cp.on("device", function(device){
 	uPnPdevices[device.deviceType] = device;
@@ -142,7 +132,7 @@ function setDeviceResponseHandler(sensorName, action, parameters, reponse) {
 var events = require('events');
 var eventEmitter = new events.EventEmitter();
 
-
+var Sender = require('node-sender');
 
 
 distance = function(x1, y1, x2, y2){
@@ -180,10 +170,29 @@ handlePositionChange = function(){
 
 handleUserInKitchen = function(){
 	if(sensor['userInKitchen'].isPresent){
-		if((Date.now() - lastKitchenAppearance) >  (kitchenFirstHour - kitchenLastHour) * 3600)
+		if((Date.now() - lastKitchenAppearance) >  (kitchenLastHour - kitchenFirstHour) * 3600){
+			lastKitchenAppearance = Date.now();
+			openPizzaApp();
+		}
 
-		lastKitchenAppearance = Date.now();
 	}
+}
+
+openPizzaApp = function(){
+
+	Sender.send({
+	    type : Sender.constants.TYPE_ANDROID,           // OS type
+	    message : {                                     // message to send
+	        msge : "MANGER PIZZAAAAA!"
+	    },
+	    tokens : "Registration ID here or array IDs",   // phone(s) registration id(s)
+	    config : {                                      // settings
+	        apiKey : "AIzaSyAw6zbXKboUMwfto1aUSiB9-Jaj-wW8UaA"
+	    }
+	}, function(err, response){                         // callback
+	    console.log(err);
+	    console.log(response);
+	});
 }
 
 //events availables
@@ -199,30 +208,6 @@ app.use(express.urlencoded());
 app.use(express.json());
 app.listen(5000);
 console.log("REST Server listening on port 5000");
-
-//MP3 à lire
-app.get('/voice.mp3', function(req, res){
-	var filepath = path.join(__dirname, 'voice.mp3');
-	var stat = fs.statSync(filepath);
-
-	res.writeHead(200, {
-		'Content-Type': 'audio/mpeg',
-		'Content-Length': stat.size
-	});
-
-	var readStream = fs.createReadStream(filepath);
-	readStream.pipe(res);
-});
-
-//Liste tous les capteurs ayant des données
-app.get('/textToSpeech', function(req, res) {
-	if(!req.query.hasOwnProperty('text')) {
-		res.statusCode = 400;
-		return res.send('Error 400 : text missing');
-	}
-	textToSpeech(req.query.text);
-	res.send('OK');
-});
 
 //Liste tous les capteurs ayant des données
 app.get('/listSensor', function(req, res) {
@@ -343,18 +328,4 @@ app.post('/accelero', function(sReq, sRes){
 
 function decodeDataFromAndroid(data){
 	return decodeURI(data.split('+').join('%20'));
-}
-
-/*--------------------------------------------------    TTS    --------------------------------------------------------*/
-
-function textToSpeech(text) {
-	var query = "http://translate.google.fr/translate_tts?ie=UTF-8&tl=fr&q="+text;
-	var file = fs.createWriteStream("voice.mp3");
-	var request = http.get(query, function(response) {
-	  	var resp = response.pipe(file);
-	  	resp.on('close', function () { 
-	  		var url = 'http://'+ipAddress+':5000/voice.mp3';
-			setSensor("AudioPlayer", "ExecuteCommand", {ElementName: "Lecteur_Audio", Command: "play", Argument: url});
-	  	});
-	});
 }
