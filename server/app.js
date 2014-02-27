@@ -170,7 +170,7 @@ handlePositionChange = function(){
 
 handleUserInKitchen = function(){
 	if(sensor['userInKitchen'].isPresent){
-		if(Date.now() - lastKitchenAppearance)
+		if((Date.now() - lastKitchenAppearance) >  (kitchenFirstHour - kitchenLastHour) * 3600)
 
 		lastKitchenAppearance = Date.now();
 	}
