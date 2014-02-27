@@ -24,7 +24,7 @@ var requestify = require('requestify');
     console.log(response.getBody());
 });*/
 
-requestify.post('http://localhost:5000/setSensor', {sensor: "AudioPlayer", action: "ExecuteCommand", parameters: {ElementName: "Lecteur_Audio", Command: "stop"}}).then(function(response) {
+requestify.post('http://localhost:5000/setSensor', {sensor: "AudioPlayer", action: "ExecuteCommand", parameters: {ElementName: "Lecteur_Audio", Command: "stop", Argument: "http://translate.google.fr/translate_tts?ie=UTF-8&tl=fr&q=test"}}).then(function(response) {
     // Get the response body (JSON parsed or jQuery object for XMLs)
     console.log(response.getBody());
 });
