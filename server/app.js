@@ -10,7 +10,7 @@ var path = require('path');
 
 var xml2js = require('xml2js');
 
-var homePosition = {latitude:0, longitude: 0};
+var homePosition = {latitude: 48.35872394, longitude: -4.57087085};
 var distanceForLight = 50; //en mètres
 
 var lastKitchenAppearance = 0;
