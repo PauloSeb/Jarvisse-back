@@ -2,6 +2,7 @@
 var xml2js = require('xml2js');
 var uPnPdevices = new Array();
 var sensor = new Array();
+var currentUser = "un inconnu";
 
 var http = require('http');
 var fs = require('fs');
@@ -61,7 +62,9 @@ cp.on("device", function(device){
 								console.log("got XML parsing err: " + err);
 								return;
 							}
+							if(tagInfo.$.value != '') currentUser = tagInfo.$.value; 
 							sensor['RFID'].push(result);
+							eventEmitter.emit('rfid', result);
 							/*
 								value template (gained/lost):
 								{ tagInfo: 
@@ -254,7 +257,7 @@ openPizzaApp = function(){
 
 //events availables
 eventEmitter.on('positionChange', handlePositionChange);
-eventEmitter.on('userInKitchen', handleUserInKitchen);
+//eventEmitter.on('userInKitchen', handleUserInKitchen);
 
 /*--------------------------------------------------    Service REST    --------------------------------------------------------*/
 
@@ -437,22 +440,36 @@ function postOnFacebook(body) {
 }
 
 eventEmitter.on('sensorChange', function(event) {
+	console.log(event);
 	switch(event.sensorName) {
 		case 'Lampe_Halogene':
+			if(event.parameters.Command == 'On')
+				postOnFacebook(currentUser+" arrive!");
+			else
+				postOnFacebook(currentUser+" est enfin parti!");
+			break;
+		case 'Lampe_Bureau':
 			if(event.parameters.Command == 'On')
 				postOnFacebook("Et la lumière fut!");
 			else
 				postOnFacebook("Ça va être tout noir!");
 			break;
-		case 'Lampe_Bureau':
-			if(event.parameters.Command == 'On')
-				postOnFacebook("Enfin rentré, ce n'était pas trop tôt!");
-			else
-				postOnFacebook("Bye!");
+		case 'AudioPlayer':
+			if(event.parameters.Argument=='http://'+ipAddress+':5000/voice.mp3') {
+				postOnFacebook("Je parle à "+currentUser+" ! :)");
+			}
 			break;
-		//case 'AudioPlayer':
-		//	if(event.parameters.Command)
 		default:
 	}
 });
 
+eventEmitter.on('userInKitchen', function() {
+	postOnFacebook(currentUser + " est dans la cuisine!");
+});
+
+eventEmitter.on('rfid', function() {
+	if(event.tagInfo.$.action == 'gained')
+		postOnFacebook(currentUser + " est rentré! :)");
+	if(event.tagInfo.$.action == 'lost')
+		postOnFacebook(currentUser + " est parti! :(");
+});
