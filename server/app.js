@@ -16,14 +16,14 @@ FB.setAccessToken('CAAGGTRR1YxwBAOy07ao2L8s28eygtx2LLNHcuojSMeV6tRRhZCxtqadW8XcQ
 var homePosition = {latitude: 48.35872394, longitude: -4.57087085};
 var distanceForLight = 100; //en mètres
 
-var kitchenFirstHour = 18;
+var kitchenFirstHour = 15;
 var kitchenLastHour = 22;
 
 /*--------------------------------------------------    IP Adress   --------------------------------------------------------*/
 var os = require( 'os' );
 var networkInterfaces = os.networkInterfaces();
-var ipAddress = (networkInterfaces.en1)[1].address;
-console.log("IP address : " + (networkInterfaces.en1)[1].address );
+var ipAddress = (networkInterfaces.en0)[1].address;
+console.log("IP address : " + (networkInterfaces.en0)[1].address );
 
 /*--------------------------------------------------    UPnP    --------------------------------------------------------*/
 
@@ -227,10 +227,12 @@ handlePositionChange = function(){
 	setSensor('Lampe_Halogene', 'ExecuteCommand', {ElementName: 'Lampe_Halogene', Command: val});
 }
 
-function diffenceDay(date1, date2){
+function differenceDay(date1, date2){
 	var oneDay = 24*60*60*1000; // hours*minutes*seconds*milliseconds
 
-	return Math.round(Math.abs((date1.getTime() - date2.getTime())/(oneDay)));
+	var diff = Math.round(Math.abs((date2.getTime() - date1.getTime())/(oneDay)));
+
+	return diff;
 }
 
 function userIsInKitchen(){
@@ -243,23 +245,30 @@ handleUserInKitchen = function(){
 	var last_date = sensor['Android_userInKitchen'][sensor['Android_userInKitchen'].length-1].date;
 	console.log("last_date: "+last_date);
 
-	//Premiere fois dans la cuisine
-	if(last_date == 0){
-		userIsInKitchen();
-	}
-	else{
-		//Si on est dans la période pour le repas du soir
-		if(Date.now().getHours() < kitchenLastHour && Date.now().getHours() > kitchenFirstHour){
+	var dateNow = new Date();
+
+	//Si on est dans la période pour le repas du soir
+	if(dateNow.getHours() < kitchenLastHour && dateNow.getHours() > kitchenFirstHour){
+		console.log("Bnne periode");
+		//Premiere fois dans la cuisine
+		if(last_date == 0){
+			console.log("Premiere fois dans la cuisine");
+			userIsInKitchen();
+		}
+		else{
 			//Si la dernière fois été hier
-			if(differenceDay(Date.now(),lastDate) > 1){
+			if(differenceDay(last_date,dateNow) > 0){
+				console.log("Bonne période et dernier != aujourd'hui");
 				userIsInKitchen();
 			}
 			//Si on y est pas venu dans la cuisine durant la période du repas
-			else if(last_date.getHours() < kitchenLastHour && last_date.getHours() > kitchenFirstHour){
+			else if(last_date.getHours() > kitchenLastHour && last_date.getHours() < kitchenFirstHour){
+				console.log("bonne periode et pas venu aujourd'hui");
 				userIsInKitchen();
 			}
 		}
 	}
+	sensor['Android_userInKitchen'].push({date: dateNow});
 	
 }
 
@@ -283,7 +292,7 @@ openPizzaApp = function(){
 
 //events availables
 eventEmitter.on('positionChange', handlePositionChange);
-//eventEmitter.on('userInKitchen', handleUserInKitchen);
+eventEmitter.on('userInKitchen', handleUserInKitchen);
 
 /*--------------------------------------------------    Service REST    --------------------------------------------------------*/
 
@@ -419,6 +428,8 @@ app.post('/userInKitchen', function(sReq, sRes){
 		sensor['Android_userInKitchen'].push({date: 0}); //default date
 	}
 	eventEmitter.emit('userInKitchen');
+	sRes.statusCode = 200;
+	sRes.send("Requete userInKitchen : OK");
 });
 
 
@@ -510,4 +521,3 @@ eventEmitter.on('rfid', function() {
 	if(event.tagInfo.$.action == 'lost')
 		postOnFacebook(currentUser + " est parti! :(");
 });
-
