@@ -3,7 +3,17 @@ var xml2js = require('xml2js');
 var uPnPdevices = new Array();
 var sensor = new Array();
 
+<<<<<<< HEAD
 var homePosition = {latitude:0, longitude: 0};
+=======
+var http = require('http');
+var fs = require('fs');
+var path = require('path');
+
+var xml2js = require('xml2js');
+
+var homePosition = {latitude: 48.35872394, longitude: -4.57087085};
+>>>>>>> 9e92ff6459b5d2f56ca801210f5a0ce2e16288d9
 var distanceForLight = 50; //en mètres
 
 var lastKitchenAppearance = 0;
@@ -17,7 +27,6 @@ var cp = new UpnpControlPoint();
 cp.search();
 cp.on("device", function(device){
 	uPnPdevices[device.deviceType] = device;
-
 	switch(device.deviceType) {
 		case 'urn:schemas-upnp-org:device:PhotoTextViewer:1':
 			sensor['PhotoTextViewer'] = new Array();
@@ -106,6 +115,7 @@ function setDevice(device, service, action, parameters, sensorName) {
 		} else {
 			console.log("got SOAP reponse: " + buf);
 			setDeviceResponseHandler(sensorName, action, parameters, buf);
+			eventEmitter.emit('sensorChange', {sensorName: sensorName, action: action, parameters: parameters, buf: buf});
 		}
 	});
 }
@@ -271,7 +281,7 @@ app.post('/geoloc', function(sReq, sRes){
 		var longitude = decodeDataFromAndroid(sReq.body.latitude);
 		var date = new Date();
 		sensor['Android_GPS'].push({position : {latitude: latitude, longitude: longitude}, date: date});
-		events.emit('positionChange');
+		eventEmitter.emit('positionChange');
 		console.log("sensor['Android_GPS']: "+ JSON.stringify(sensor['Android_GPS']));
 		sRes.statusCode = 200;
 		sRes.send("Requete geoloc : OK");
