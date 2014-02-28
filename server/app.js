@@ -3,9 +3,6 @@ var xml2js = require('xml2js');
 var uPnPdevices = new Array();
 var sensor = new Array();
 
-<<<<<<< HEAD
-var homePosition = {latitude:0, longitude: 0};
-=======
 var http = require('http');
 var fs = require('fs');
 var path = require('path');
@@ -13,8 +10,7 @@ var path = require('path');
 var xml2js = require('xml2js');
 
 var homePosition = {latitude: 48.35872394, longitude: -4.57087085};
->>>>>>> 9e92ff6459b5d2f56ca801210f5a0ce2e16288d9
-var distanceForLight = 50; //en mètres
+var distanceForLight = 100; //en mètres
 
 var lastKitchenAppearance = 0;
 var kitchenFirstHour = 18;
@@ -165,17 +161,14 @@ function updateAcceleroOnAxis(coord) {
 						case 'X':
 							var value = result['s:Envelope']['s:Body'][0]['u:getXValueResponse'][0].x[0];
 							sensor['Accelero'].push({date: new Date(), axis: 'x', value: value});
-							console.log('X='+value);
 							break;
 						case 'Y':
 							var value = result['s:Envelope']['s:Body'][0]['u:getYValueResponse'][0].y[0];
 							sensor['Accelero'].push({date: new Date(), axis: 'y', value: value});
-							console.log('Y='+value);
 							break
 						default:
 							var value = result['s:Envelope']['s:Body'][0]['u:getZValueResponse'][0].z[0];
 							sensor['Accelero'].push({date: new Date(), axis: 'z', value: value});
-							console.log('Z='+value);
 					}
 				});
 			} catch (exception) {
@@ -198,8 +191,7 @@ distance = function(x1, y1, x2, y2){
 
 function distFrom(lat1, lng1, lat2, lng2) {
 	var toRadians = function(d){ return 	d * (Math.PI / 180);}
-
-    var earthRadius = 6369;
+    var earthRadius = 6369000;
     var dLat = toRadians(lat2-lat1);
     var dLng = toRadians(lng2-lng1);
     var a = Math.sin(dLat/2) * Math.sin(dLat/2) +
@@ -212,17 +204,17 @@ function distFrom(lat1, lng1, lat2, lng2) {
 
 //Events handling
 handlePositionChange = function(){
-	var last_pos = sensor['Android_GPS'][sensor['Android_GPS'].length-1];
+	var last_pos = sensor['Android_GPS'][sensor['Android_GPS'].length-1].position;
 	var d = distFrom(
 		last_pos.latitude, 
 		last_pos.longitude, 
 		homePosition.latitude, 
 		homePosition.longitude
 	);
-	var val = 'off';
+	var val = 'Off';
 	if(d < distanceForLight)
-		val = 'on';
-	setSensor('Lamp', 'power', val);
+		val = 'On';
+	setSensor('Lampe_Halogene', 'ExecuteCommand', {ElementName: 'Lampe_Halogene', Command: val});
 }
 
 handleUserInKitchen = function(){
@@ -295,7 +287,6 @@ app.get('/getSensorLast', function(req, res) {
 
 //Actionner un device
 app.post('/setSensor', function(req, res){
-	console.log(req.body);
 	if(!req.body.hasOwnProperty('sensor')) {
 		res.statusCode = 400;
 		return res.send('Set sensor : ' + listSensor());
@@ -325,7 +316,7 @@ app.post('/geoloc', function(sReq, sRes){
 		if(sensor['Android_GPS'] == null) sensor['Android_GPS'] =  new Array();
 			
 		var latitude = decodeDataFromAndroid(sReq.body.latitude);
-		var longitude = decodeDataFromAndroid(sReq.body.latitude);
+		var longitude = decodeDataFromAndroid(sReq.body.longitude);
 		var date = new Date();
 		sensor['Android_GPS'].push({position : {latitude: latitude, longitude: longitude}, date: date});
 		eventEmitter.emit('positionChange');
