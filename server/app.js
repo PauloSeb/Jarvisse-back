@@ -15,7 +15,6 @@ FB.setAccessToken('CAAGGTRR1YxwBAOy07ao2L8s28eygtx2LLNHcuojSMeV6tRRhZCxtqadW8XcQ
 var homePosition = {latitude: 48.35872394, longitude: -4.57087085};
 var distanceForLight = 100; //en mètres
 
-var lastKitchenAppearance = 0;
 var kitchenFirstHour = 18;
 var kitchenLastHour = 22;
 
@@ -219,16 +218,43 @@ handlePositionChange = function(){
 	setSensor('Lampe_Halogene', 'ExecuteCommand', {ElementName: 'Lampe_Halogene', Command: val});
 }
 
-/*handleUserInKitchen = function(){
-	if(sensor['userInKitchen'].isPresent){
-		if((Date.now() - lastKitchenAppearance) >  (kitchenLastHour - kitchenFirstHour) * 3600){
-			lastKitchenAppearance = Date.now();
-			openPizzaApp();
-		}
+function diffenceDay(date1, date2){
+	var oneDay = 24*60*60*1000; // hours*minutes*seconds*milliseconds
 
-	}
+	return Math.round(Math.abs((date1.getTime() - date2.getTime())/(oneDay)));
 }
 
+function userIsInKitchen(){
+	textToSpeech("Que souhaitez-vous manger ce soir?");
+	//Dire à l'application Android d'ouvrir le service pour répondre à la question
+}
+
+handleUserInKitchen = function(){
+	console.log("handle");
+	var last_date = sensor['Android_userInKitchen'][sensor['Android_userInKitchen'].length-1].date;
+	console.log("last_date: "+last_date);
+
+	//Premiere fois dans la cuisine
+	if(last_date == 0){
+		userIsInKitchen();
+	}
+	else{
+		//Si on est dans la période pour le repas du soir
+		if(Date.now().getHours() < kitchenLastHour && Date.now().getHours() > kitchenFirstHour){
+			//Si la dernière fois été hier
+			if(differenceDay(Date.now(),lastDate) > 1){
+				userIsInKitchen();
+			}
+			//Si on y est pas venu dans la cuisine durant la période du repas
+			else if(last_date.getHours() < kitchenLastHour && last_date.getHours() > kitchenFirstHour){
+				userIsInKitchen();
+			}
+		}
+	}
+	
+}
+
+/*
 openPizzaApp = function(){
 
 	Sender.send({
@@ -351,6 +377,17 @@ app.post('/voix', function(sReq, sRes){
 	}
 
 });
+
+//userInKitchen Android
+app.get('/userInKitchen', function(sReq, sRes){
+	console.log("userInKitchen");
+	if(sensor['Android_userInKitchen'] == null){
+		sensor['Android_userInKitchen'] =  new Array();
+		sensor['Android_userInKitchen'].push({date: 0}); //default date
+	}
+	eventEmitter.emit('userInKitchen');
+});
+
 
 //Accelero Android
 app.post('/accelero', function(sReq, sRes){
