@@ -9,6 +9,9 @@ var path = require('path');
 
 var xml2js = require('xml2js');
 
+var FB = require('fb');
+FB.setAccessToken('CAAGGTRR1YxwBAOy07ao2L8s28eygtx2LLNHcuojSMeV6tRRhZCxtqadW8XcQ2Ns7vyK6CQNZAjACejwYhE1n2dlxE4rJUOc1kLGR3DKHkbul947OF7Tum8MwH2nH3uZCQ69XmTrDvUxy1HnwOmh0t2rf8Wa605KbCDyAbgd86A5fEemiXP4C1y1htdxxH00YlHzwcpOFQZDZD');
+
 var homePosition = {latitude: 48.35872394, longitude: -4.57087085};
 var distanceForLight = 100; //en mètres
 
@@ -182,7 +185,6 @@ function updateAcceleroOnAxis(coord) {
 var events = require('events');
 var eventEmitter = new events.EventEmitter();
 
-var Sender = require('node-sender');
 
 
 distance = function(x1, y1, x2, y2){
@@ -217,7 +219,7 @@ handlePositionChange = function(){
 	setSensor('Lampe_Halogene', 'ExecuteCommand', {ElementName: 'Lampe_Halogene', Command: val});
 }
 
-handleUserInKitchen = function(){
+/*handleUserInKitchen = function(){
 	if(sensor['userInKitchen'].isPresent){
 		if((Date.now() - lastKitchenAppearance) >  (kitchenLastHour - kitchenFirstHour) * 3600){
 			lastKitchenAppearance = Date.now();
@@ -242,7 +244,7 @@ openPizzaApp = function(){
 	    console.log(err);
 	    console.log(response);
 	});
-}
+}*/
 
 //events availables
 eventEmitter.on('positionChange', handlePositionChange);
@@ -377,3 +379,28 @@ app.post('/accelero', function(sReq, sRes){
 function decodeDataFromAndroid(data){
 	return decodeURI(data.split('+').join('%20'));
 }
+
+/*--------------------------------------------------    Service REST    --------------------------------------------------------*/
+
+function postOnFacebook(body) {
+	FB.api('me/feed', 'post', { message: body}, function (res) {
+	  if(!res || res.error) {
+	    console.log(!res ? 'error occurred' : res.error);
+	    return;
+	  }
+	  console.log('Post Id: ' + res.id);
+	});
+}
+
+eventEmitter.on('sensorChange', function(event) {
+	switch(event.sensorName) {
+		case 'Lampe_Halogene':
+			if(event.parameters.Command == 'On')
+				postOnFacebook("Et la lumière fut!");
+			else
+				postOnFacebook("Ça va être tout noir!");
+			break;
+		default:
+	}
+});
+
