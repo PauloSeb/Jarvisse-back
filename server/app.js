@@ -19,6 +19,12 @@ var lastKitchenAppearance = 0;
 var kitchenFirstHour = 18;
 var kitchenLastHour = 22;
 
+/*--------------------------------------------------    IP Adress   --------------------------------------------------------*/
+var os = require( 'os' );
+var networkInterfaces = os.networkInterfaces();
+var ipAddress = (networkInterfaces.en1)[1].address;
+console.log("IP address : " + (networkInterfaces.en1)[1].address );
+
 /*--------------------------------------------------    UPnP    --------------------------------------------------------*/
 
 var UpnpControlPoint = require("../lib/upnp-controlpoint").UpnpControlPoint;
@@ -260,6 +266,30 @@ app.use(express.json());
 app.listen(5000);
 console.log("REST Server listening on port 5000");
 
+//MP3 à lire
+app.get('/voice.mp3', function(req, res){
+ 	var filepath = path.join(__dirname, 'voice.mp3');
+ 	var stat = fs.statSync(filepath);
+ 
+ 	res.writeHead(200, {
+ 		'Content-Type': 'audio/mpeg',
+ 		'Content-Length': stat.size
+ 	});
+ 
+ 	var readStream = fs.createReadStream(filepath);
+	readStream.pipe(res);
+});
+ 
+//Liste tous les capteurs ayant des données
+app.get('/textToSpeech', function(req, res) {
+	if(!req.query.hasOwnProperty('text')) {
+		res.statusCode = 400;
+		return res.send('Error 400 : text missing');
+	}
+	textToSpeech(req.query.text);
+	res.send('OK');
+});
+
 //Liste tous les capteurs ayant des données
 app.get('/listSensor', function(req, res) {
 	res.send(JSON.stringify(listSensor()));
@@ -380,6 +410,20 @@ function decodeDataFromAndroid(data){
 	return decodeURI(data.split('+').join('%20'));
 }
 
+/*--------------------------------------------------    TTS    --------------------------------------------------------*/
+
+function textToSpeech(text) {
+	var query = "http://translate.google.fr/translate_tts?ie=UTF-8&tl=fr&q="+text;
+	var file = fs.createWriteStream("voice.mp3");
+	var request = http.get(query, function(response) {
+	  	var resp = response.pipe(file);
+  	resp.on('close', function () { 
+	  		var url = 'http://'+ipAddress+':5000/voice.mp3';
+			setSensor("AudioPlayer", "ExecuteCommand", {ElementName: "Lecteur_Audio", Command: "play", Argument: url});
+	  	});
+	});
+}
+
 /*--------------------------------------------------    Service REST    --------------------------------------------------------*/
 
 function postOnFacebook(body) {
@@ -400,6 +444,14 @@ eventEmitter.on('sensorChange', function(event) {
 			else
 				postOnFacebook("Ça va être tout noir!");
 			break;
+		case 'Lampe_Bureau':
+			if(event.parameters.Command == 'On')
+				postOnFacebook("Enfin rentré, ce n'était pas trop tôt!");
+			else
+				postOnFacebook("Bye!");
+			break;
+		//case 'AudioPlayer':
+		//	if(event.parameters.Command)
 		default:
 	}
 });
