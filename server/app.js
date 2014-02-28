@@ -2,6 +2,7 @@
 var xml2js = require('xml2js');
 var uPnPdevices = new Array();
 var sensor = new Array();
+var currentUser = "un inconnu";
 
 var http = require('http');
 var fs = require('fs');
@@ -17,6 +18,12 @@ var distanceForLight = 100; //en mètres
 
 var kitchenFirstHour = 18;
 var kitchenLastHour = 22;
+
+/*--------------------------------------------------    IP Adress   --------------------------------------------------------*/
+var os = require( 'os' );
+var networkInterfaces = os.networkInterfaces();
+var ipAddress = (networkInterfaces.en1)[1].address;
+console.log("IP address : " + (networkInterfaces.en1)[1].address );
 
 /*--------------------------------------------------    UPnP    --------------------------------------------------------*/
 
@@ -54,7 +61,9 @@ cp.on("device", function(device){
 								console.log("got XML parsing err: " + err);
 								return;
 							}
+							if(tagInfo.$.value != '') currentUser = tagInfo.$.value; 
 							sensor['RFID'].push(result);
+							eventEmitter.emit('rfid', result);
 							/*
 								value template (gained/lost):
 								{ tagInfo: 
@@ -274,7 +283,7 @@ openPizzaApp = function(){
 
 //events availables
 eventEmitter.on('positionChange', handlePositionChange);
-eventEmitter.on('userInKitchen', handleUserInKitchen);
+//eventEmitter.on('userInKitchen', handleUserInKitchen);
 
 /*--------------------------------------------------    Service REST    --------------------------------------------------------*/
 
@@ -285,6 +294,30 @@ app.use(express.urlencoded());
 app.use(express.json());
 app.listen(5000);
 console.log("REST Server listening on port 5000");
+
+//MP3 à lire
+app.get('/voice.mp3', function(req, res){
+ 	var filepath = path.join(__dirname, 'voice.mp3');
+ 	var stat = fs.statSync(filepath);
+ 
+ 	res.writeHead(200, {
+ 		'Content-Type': 'audio/mpeg',
+ 		'Content-Length': stat.size
+ 	});
+ 
+ 	var readStream = fs.createReadStream(filepath);
+	readStream.pipe(res);
+});
+ 
+//Liste tous les capteurs ayant des données
+app.get('/textToSpeech', function(req, res) {
+	if(!req.query.hasOwnProperty('text')) {
+		res.statusCode = 400;
+		return res.send('Error 400 : text missing');
+	}
+	textToSpeech(req.query.text);
+	res.send('OK');
+});
 
 //Liste tous les capteurs ayant des données
 app.get('/listSensor', function(req, res) {
@@ -379,7 +412,7 @@ app.post('/voix', function(sReq, sRes){
 });
 
 //userInKitchen Android
-app.get('/userInKitchen', function(sReq, sRes){
+app.post('/userInKitchen', function(sReq, sRes){
 	console.log("userInKitchen");
 	if(sensor['Android_userInKitchen'] == null){
 		sensor['Android_userInKitchen'] =  new Array();
@@ -417,6 +450,20 @@ function decodeDataFromAndroid(data){
 	return decodeURI(data.split('+').join('%20'));
 }
 
+/*--------------------------------------------------    TTS    --------------------------------------------------------*/
+
+function textToSpeech(text) {
+	var query = "http://translate.google.fr/translate_tts?ie=UTF-8&tl=fr&q="+text;
+	var file = fs.createWriteStream("voice.mp3");
+	var request = http.get(query, function(response) {
+	  	var resp = response.pipe(file);
+  	resp.on('close', function () { 
+	  		var url = 'http://'+ipAddress+':5000/voice.mp3';
+			setSensor("AudioPlayer", "ExecuteCommand", {ElementName: "Lecteur_Audio", Command: "play", Argument: url});
+	  	});
+	});
+}
+
 /*--------------------------------------------------    Service REST    --------------------------------------------------------*/
 
 function postOnFacebook(body) {
@@ -430,14 +477,36 @@ function postOnFacebook(body) {
 }
 
 eventEmitter.on('sensorChange', function(event) {
+	console.log(event);
 	switch(event.sensorName) {
 		case 'Lampe_Halogene':
+			if(event.parameters.Command == 'On')
+				postOnFacebook(currentUser+" arrive!");
+			else
+				postOnFacebook(currentUser+" est enfin parti!");
+			break;
+		case 'Lampe_Bureau':
 			if(event.parameters.Command == 'On')
 				postOnFacebook("Et la lumière fut!");
 			else
 				postOnFacebook("Ça va être tout noir!");
 			break;
+		case 'AudioPlayer':
+			if(event.parameters.Argument=='http://'+ipAddress+':5000/voice.mp3') {
+				postOnFacebook("Je parle à "+currentUser+" ! :)");
+			}
+			break;
 		default:
 	}
 });
 
+eventEmitter.on('userInKitchen', function() {
+	postOnFacebook(currentUser + " est dans la cuisine!");
+});
+
+eventEmitter.on('rfid', function() {
+	if(event.tagInfo.$.action == 'gained')
+		postOnFacebook(currentUser + " est rentré! :)");
+	if(event.tagInfo.$.action == 'lost')
+		postOnFacebook(currentUser + " est parti! :(");
+});
