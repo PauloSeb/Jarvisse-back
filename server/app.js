@@ -510,3 +510,4 @@ eventEmitter.on('rfid', function() {
 	if(event.tagInfo.$.action == 'lost')
 		postOnFacebook(currentUser + " est parti! :(");
 });
+
