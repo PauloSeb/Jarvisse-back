@@ -11,7 +11,10 @@ var path = require('path');
 var xml2js = require('xml2js');
 
 var FB = require('fb');
-FB.setAccessToken('CAAGGTRR1YxwBAOy07ao2L8s28eygtx2LLNHcuojSMeV6tRRhZCxtqadW8XcQ2Ns7vyK6CQNZAjACejwYhE1n2dlxE4rJUOc1kLGR3DKHkbul947OF7Tum8MwH2nH3uZCQ69XmTrDvUxy1HnwOmh0t2rf8Wa605KbCDyAbgd86A5fEemiXP4C1y1htdxxH00YlHzwcpOFQZDZD');
+FB.setAccessToken('CAAGGTRR1YxwBAJOCvBY2ZCBgGeN3fPekNIt91qUN6EFmADgDjn08nyLWTBk6HqeYninaNb4SB4QjxRfo10i3d6fTuAU52qzO34VbKDaNF7Q773yLpPNqikkMKAcfwZBRsi3gaK9n9U5YPmJR1tIBljszGwktZAaducobHRSkWZA5005ZCZB3aJ');
+//convert to long term token
+//https://graph.facebook.com/oauth/access_token?grant_type=fb_exchange_token&client_id=429140590551836&client_secret=c92b9dbe442ef122e9985fbbb94fe4cd&fb_exchange_token=CAAGGTRR1YxwBAEZBZA9ODgf0ZCur6EYTsNEZA8U5Xg6xOOYAbXNdXSiyfvZBCKMRuKy93jBh9iThUQTRfIU2pOxBZAe2cNmZBXQ1ZBWNZB9xI8VDbS5oLZALMK1evE4fwigvOnIGh84wwrnZANvLZBgp2bQ8ZCugJE7GS58ZCkrFyZA6Tc6XxWzCGn0CIZAoCoICHSfclVSwY61bhNXgZBwZDZD 
+
 
 var homePosition = {latitude: 48.35872394, longitude: -4.57087085};
 var distanceForLight = 100; //en mètres
@@ -419,6 +422,7 @@ app.post('/userInKitchen', function(sReq, sRes){
 		sensor['Android_userInKitchen'].push({date: 0}); //default date
 	}
 	eventEmitter.emit('userInKitchen');
+	sRes.send("userInKitchen : OK");
 });
 
 
@@ -511,3 +515,63 @@ eventEmitter.on('rfid', function() {
 		postOnFacebook(currentUser + " est parti! :(");
 });
 
+/*--------------------------------------------------    Homepage    --------------------------------------------------------*/
+
+function getLocalWeather() {
+	var request = http.get('http://api.openweathermap.org/data/2.5/weather?lat=48&lon=-4.5', function(response) {
+		var body ='';
+		response.on('data', function(chunk) {
+			body += chunk;
+		});
+		response.on('end', function() {;
+			formatLocalWeather(body);
+		});
+	});
+}
+
+function formatLocalWeather(body) {
+	console.log(body);
+}
+
+function getLocalNews() {
+	var request = http.get('http://www.letelegramme.fr/finistere/brest/rss.xml', function(response) {
+		var body = '';
+		response.on('data', function(chunk) {
+			body += chunk;
+		});
+		response.on('end', function() {;
+			var parser = new xml2js.Parser();
+			try {
+				parser.parseString(body, function(err, result) {
+					if (err) {
+						console.log("got XML parsing err: " + err);
+						return;
+					}
+					formatLocalNews(result.rss.channel[0]);
+
+				});
+			} catch (exception) {
+				console.log("RFID exception: " + exception);
+			}
+		});
+	});
+}
+
+function formatLocalNews(rss) {
+	console.log("Source : " + rss.title[0]);
+	console.log("Date : " + rss.lastBuildDate[0]);
+	console.log("Link : " + rss.link[0]);
+	for(var item in rss.item) {
+		console.log("Article "+item+" title: "+rss.item[item].title[0]);
+		console.log("Article "+item+" description: "+rss.item[item].description[0]);
+		console.log("Article "+item+" date: "+rss.item[item].pubDate[0]);
+		console.log("Article "+item+" link: "+rss.item[item].link[0]);
+	}
+}
+
+function generateHomepage() {	
+	getLocalWeather();
+	//getLocalNews();
+}
+
+generateHomepage();
