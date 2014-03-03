@@ -249,6 +249,7 @@ function differenceDay(date1, date2){
 
 function userIsInKitchen(){
 	textToSpeech("Que souhaitez-vous manger ce soir?");
+	pizza = true;
 	//Dire à l'application Android d'ouvrir le service pour répondre à la question
 	setSensor('Android_userInKitchen', 'launchPizza', {});
 }
@@ -303,17 +304,22 @@ handleVoice = function(){
 	last_voice = last_voice.toLowerCase();
 	console.log("last_voice: "+last_voice);
 	var words = last_voice.split(" ");
-	var pizza = false;
-	words.forEach(function(value){
-		if(value === 'pizza'){
-			pizza = true;
-		}
-	});
-	
+
 	if(pizza){
-		console.log("PIZZA");
+		pizza = false;
+		var pizzaFound = false;
+		words.forEach(function(value){
+			if(value === 'pizza'){
+				pizzaFound = true;
+			}
+		});
+		if(pizzaFound){
+			console.log("PIZZA");
+		}
 	}
-	else{
+
+	if(bonneJournee){
+		bonneJournee = false;
 		var goodDay = false;
 		words.forEach(function(value) {
 			goodDay = detectGoodDay(value,goodDay);	    
