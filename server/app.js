@@ -25,8 +25,8 @@ var kitchenLastHour = 22;
 /*--------------------------------------------------    IP Adress   --------------------------------------------------------*/
 var os = require( 'os' );
 var networkInterfaces = os.networkInterfaces();
-var ipAddress = (networkInterfaces.en0)[1].address;
-console.log("IP address : " + (networkInterfaces.en0)[1].address );
+var ipAddress = (networkInterfaces.en1)[1].address;
+console.log("IP address : " + (networkInterfaces.en1)[1].address );
 
 /*--------------------------------------------------    UPnP    --------------------------------------------------------*/
 
@@ -40,14 +40,14 @@ cp.on("device", function(device){
 			sensor['PhotoTextViewer'] = new Array();
 			sensor['PhotoTextViewer'].text = new Array();
 			sensor['PhotoTextViewer'].picture = new Array();
-		break;
+			break;
 		case 'urn:schemas-upnp-org:device:AudioPlayer:1':
 			sensor['AudioPlayer'] = new Array();
-		break;
+			break;
 		case 'urn:schemas-upnp-org:device:X10CM11:1':
 			sensor['Lampe_Bureau'] = new Array();
 			sensor['Lampe_Halogene'] = new Array();
-		break;
+			break;
 		case 'urn:schemas-upnp-org:device:Accelero:1':
 			sensor['Accelero'] = new Array();
 			setInterval(updateAccelero, 2000);
@@ -89,7 +89,7 @@ cp.on("device", function(device){
 					}
 				});
 			});
-		break;
+			break;
 	}
 });
 
@@ -103,6 +103,9 @@ function getSensor(device) {
 
 function setSensor(sensorName, action, parameters) {
 	switch(sensorName) {
+		case 'Android_userInKitchen':
+			setDevice('urn:schemas-upnp-org:device:Android:1', 'urn:upnp-org:serviceId:2', action, parameters, 'Android_userInKitchen');
+			break;
 		case 'AudioPlayer':
 			setDevice('urn:schemas-upnp-org:device:AudioPlayer:1', 'urn:schemas-upnp-org:serviceId:1', action, parameters, 'AudioPlayer');
 			break;
@@ -146,6 +149,8 @@ function setDeviceResponseHandler(sensorName, action, parameters, reponse) {
 			break;
 		case 'AudioPlayer':
 			sensor['AudioPlayer'].push({date: new Date(), command: action, argument: parameters.url});
+			break;
+		case 'Android_userInKitchen':
 			break;
 		default:
 			sensor[sensorName].push({date: new Date(), value: reponse});
@@ -241,6 +246,7 @@ function differenceDay(date1, date2){
 function userIsInKitchen(){
 	textToSpeech("Que souhaitez-vous manger ce soir?");
 	//Dire à l'application Android d'ouvrir le service pour répondre à la question
+	setSensor('Android_userInKitchen', 'launchPizza', {});
 }
 
 handleUserInKitchen = function(){
@@ -613,4 +619,4 @@ function generateHomepage() {
 	//getLocalNews();
 }
 
-generateHomepage();
+//generateHomepage();
