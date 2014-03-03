@@ -290,15 +290,27 @@ function detectGoodDay(word,goodDay){
 handleVoice = function(){
 	console.log("handle voice");
 	var last_voice = sensor['Android_Voice'][sensor['Android_Voice'].length-1].voix;
+	last_voice = last_voice.toLowerCase();
 	console.log("last_voice: "+last_voice);
 	var words = last_voice.split(" ");
-	var goodDay = false;
-	words.forEach(function(value) {
-		goodDay = detectGoodDay(value,goodDay);	    
+	var pizza = false;
+	words.forEach(function(value){
+		if(value === 'pizza'){
+			pizza = true;
+		}
 	});
-
-	if(goodDay){
-		console.log("BOOOONNNNNNNEEe");
+	
+	if(pizza){
+		console.log("PIZZA");
+	}
+	else{
+		var goodDay = false;
+		words.forEach(function(value) {
+			goodDay = detectGoodDay(value,goodDay);	    
+		});
+		if(goodDay){
+			console.log("BOOOONNNNNNNEEe");
+		}
 	}
 }
 
