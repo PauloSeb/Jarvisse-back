@@ -130,15 +130,17 @@ function setSensor(sensorName, action, parameters) {
 }
 
 function setDevice(device, service, action, parameters, sensorName) {
-	uPnPdevices[device].services[service].callAction(action, parameters, function(err, buf) {
-		if (err) {
-			console.log("got err when performing action: " + err + " => " + buf);
-		} else {
-			console.log("got SOAP reponse: " + buf);
-			setDeviceResponseHandler(sensorName, action, parameters, buf);
-			eventEmitter.emit('sensorChange', {sensorName: sensorName, action: action, parameters: parameters, buf: buf});
-		}
-	});
+	if(uPnPdevices[device] != null) {
+		uPnPdevices[device].services[service].callAction(action, parameters, function(err, buf) {
+			if (err) {
+				console.log("got err when performing action: " + err + " => " + buf);
+			} else {
+				console.log("got SOAP reponse: " + buf);
+				setDeviceResponseHandler(sensorName, action, parameters, buf);
+				eventEmitter.emit('sensorChange', {sensorName: sensorName, action: action, parameters: parameters, buf: buf});
+			}
+		});
+	}
 }
 
 function setDeviceResponseHandler(sensorName, action, parameters, reponse) {
@@ -580,7 +582,9 @@ eventEmitter.on('rfid', function(event) {
 	if(event.tagInfo.$.action == 'gained') {
 		postOnFacebook(currentUser + " est rentré! :)");
 		setSensor('Lampe_Bureau', 'ExecuteCommand', {ElementName: 'Lampe_Bureau', Command: "On"});
-		setSensor('Lampe_Halogene', 'ExecuteCommand', {ElementName: 'Lampe_Halogene', Command: "Off"});
+		setTimeout(function() {
+			setSensor('Lampe_Halogene', 'ExecuteCommand', {ElementName: 'Lampe_Halogene', Command: "Off"});
+		}, 1000);
 		if(currentUser == "un inconnu")
 			textToSpeech("Bonjour, comment allez vous?");
 		else
@@ -588,10 +592,12 @@ eventEmitter.on('rfid', function(event) {
 		bonneJournee = true;
 	}
 	if(event.tagInfo.$.action == 'lost') {
-		textToSpeech("Au revoir!");
 		postOnFacebook(currentUser + " est parti! :(");
-		setSensor('Lampe_Bureau', 'ExecuteCommand', {ElementName: 'Lampe_Bureau', Command: "Off"});
 		setSensor('Lampe_Halogene', 'ExecuteCommand', {ElementName: 'Lampe_Halogene', Command: "On"});
+		textToSpeech("Au revoir!");
+		setTimeout(function() {
+			setSensor('Lampe_Bureau', 'ExecuteCommand', {ElementName: 'Lampe_Bureau', Command: "Off"});
+		}, 1000);
 	}
 });
 
