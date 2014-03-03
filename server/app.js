@@ -4,6 +4,9 @@ var uPnPdevices = new Array();
 var sensor = new Array();
 var currentUser = "un inconnu";
 
+var bonneJournee = false;
+var pizza = false;
+
 var http = require('http');
 var fs = require('fs');
 var path = require('path');
@@ -64,7 +67,8 @@ cp.on("device", function(device){
 								console.log("got XML parsing err: " + err);
 								return;
 							}
-							if(tagInfo.$.value != '') currentUser = tagInfo.$.value; 
+							//console.log(result);
+							if(result.tagInfo.$.value != null) currentUser = result.tagInfo.$.value; 
 							sensor['RFID'].push(result);
 							eventEmitter.emit('rfid', result);
 							/*
@@ -528,13 +532,14 @@ function textToSpeech(text) {
 /*--------------------------------------------------    Service REST    --------------------------------------------------------*/
 
 function postOnFacebook(body) {
-	FB.api('me/feed', 'post', { message: body}, function (res) {
+	console.log("Facebook!");
+	/*FB.api('me/feed', 'post', { message: body}, function (res) {
 	  if(!res || res.error) {
 	    console.log(!res ? 'error occurred' : res.error);
 	    return;
 	  }
 	  console.log('Post Id: ' + res.id);
-	});
+	});*/
 }
 
 eventEmitter.on('sensorChange', function(event) {
@@ -565,11 +570,23 @@ eventEmitter.on('userInKitchen', function() {
 	postOnFacebook(currentUser + " est dans la cuisine!");
 });
 
-eventEmitter.on('rfid', function() {
-	if(event.tagInfo.$.action == 'gained')
+eventEmitter.on('rfid', function(event) {
+	if(event.tagInfo.$.action == 'gained') {
 		postOnFacebook(currentUser + " est rentré! :)");
-	if(event.tagInfo.$.action == 'lost')
+		setSensor('Lampe_Bureau', 'ExecuteCommand', {ElementName: 'Lampe_Bureau', Command: "On"});
+		setSensor('Lampe_Halogene', 'ExecuteCommand', {ElementName: 'Lampe_Halogene', Command: "Off"});
+		if(currentUser == "un inconnu")
+			textToSpeech("Bonjour, comment allez vous?");
+		else
+			textToSpeech("Bonjour "+ currentUser +", comment allez vous?");
+		bonneJournee = true;
+	}
+	if(event.tagInfo.$.action == 'lost') {
+		textToSpeech("Au revoir!");
 		postOnFacebook(currentUser + " est parti! :(");
+		setSensor('Lampe_Bureau', 'ExecuteCommand', {ElementName: 'Lampe_Bureau', Command: "Off"});
+		setSensor('Lampe_Halogene', 'ExecuteCommand', {ElementName: 'Lampe_Halogene', Command: "On"});
+	}
 });
 
 /*--------------------------------------------------    Homepage    --------------------------------------------------------*/
@@ -608,7 +625,7 @@ function getLocalNews() {
 
 				});
 			} catch (exception) {
-				console.log("RFID exception: " + exception);
+				console.log("GET localNews exception: " + exception);
 			}
 		});
 	});
