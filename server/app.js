@@ -244,7 +244,7 @@ function userIsInKitchen(){
 }
 
 handleUserInKitchen = function(){
-	console.log("handle");
+	console.log("handle user in kitchen");
 	var last_date = sensor['Android_userInKitchen'][sensor['Android_userInKitchen'].length-1].date;
 	console.log("last_date: "+last_date);
 
@@ -275,6 +275,33 @@ handleUserInKitchen = function(){
 	
 }
 
+function detectGoodDay(word,goodDay){
+	console.log("word: "+word);
+	var result = goodDay;
+	switch(word) {
+		case 'oui': result = true;
+			break;
+		case 'non': result = false;
+			break;
+	}
+	return result;
+}
+
+handleVoice = function(){
+	console.log("handle voice");
+	var last_voice = sensor['Android_Voice'][sensor['Android_Voice'].length-1].voix;
+	console.log("last_voice: "+last_voice);
+	var words = last_voice.split(" ");
+	var goodDay = false;
+	words.forEach(function(value) {
+		goodDay = detectGoodDay(value,goodDay);	    
+	});
+
+	if(goodDay){
+		console.log("BOOOONNNNNNNEEe");
+	}
+}
+
 /*
 openPizzaApp = function(){
 
@@ -296,6 +323,7 @@ openPizzaApp = function(){
 //events availables
 eventEmitter.on('positionChange', handlePositionChange);
 eventEmitter.on('userInKitchen', handleUserInKitchen);
+eventEmitter.on('voice', handleVoice);
 
 /*--------------------------------------------------    Service REST    --------------------------------------------------------*/
 
@@ -393,7 +421,7 @@ app.post('/geoloc', function(sReq, sRes){
 		var date = new Date();
 		sensor['Android_GPS'].push({position : {latitude: latitude, longitude: longitude}, date: date});
 		eventEmitter.emit('positionChange');
-		console.log("sensor['Android_GPS']: "+ JSON.stringify(sensor['Android_GPS']));
+		//console.log("sensor['Android_GPS']: "+ JSON.stringify(sensor['Android_GPS']));
 		sRes.statusCode = 200;
 		sRes.send("Requete geoloc : OK");
 	}
@@ -416,7 +444,8 @@ app.post('/voix', function(sReq, sRes){
 		console.log("voix : " + voix);
 		var date = new Date();
 		sensor['Android_Voice'].push({voix: voix, date: date});
-		console.log("sensor['Android_Voice']: "+ JSON.stringify(sensor['Android_Voice']));
+		eventEmitter.emit('voice');
+		//console.log("sensor['Android_Voice']: "+ JSON.stringify(sensor['Android_Voice']));
 		sRes.statusCode = 200;
 		sRes.send("Requete voix : OK");
 	}
