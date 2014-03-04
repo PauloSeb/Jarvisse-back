@@ -22,8 +22,8 @@ FB.setAccessToken('CAAGGTRR1YxwBAJOCvBY2ZCBgGeN3fPekNIt91qUN6EFmADgDjn08nyLWTBk6
 var homePosition = {latitude: 48.35872394, longitude: -4.57087085};
 var distanceForLight = 100; //en mètres
 
-var kitchenFirstHour = 15;
-var kitchenLastHour = 22;
+var kitchenFirstHour = 12;
+var kitchenLastHour = 16;
 
 /*--------------------------------------------------    IP Adress   --------------------------------------------------------*/
 var os = require( 'os' );
@@ -43,6 +43,7 @@ cp.on("device", function(device){
 			sensor['PhotoTextViewer'] = new Array();
 			sensor['PhotoTextViewer'].text = new Array();
 			sensor['PhotoTextViewer'].picture = new Array();
+			generateHomepage();
 			break;
 		case 'urn:schemas-upnp-org:device:AudioPlayer:1':
 			sensor['AudioPlayer'] = new Array();
@@ -114,10 +115,12 @@ function setSensor(sensorName, action, parameters) {
 			setDevice('urn:schemas-upnp-org:device:AudioPlayer:1', 'urn:schemas-upnp-org:serviceId:1', action, parameters, 'AudioPlayer');
 			break;
 		case 'PhotoTextViewer':
-			if(action=="SetText")
-				setDevice('urn:schemas-upnp-org:device:PhotoTextViewer:1', 'urn:schemas-upnp-org:serviceId:1', "SetText", parameters, 'PhotoTextViewer');
+			if(action=="SetText") {
+				setDevice('urn:schemas-upnp-org:device:PhotoTextViewer:1', 'urn:schemas-upnp-org:serviceId:2', "SetText", parameters, 'PhotoTextViewer');
+				console.log("set text avec parameters= "+JSON.stringify(parameters));
+			}
 			if(action=="SetPicture")
-				setDevice('urn:schemas-upnp-org:device:PhotoTextViewer:1', 'urn:schemas-upnp-org:serviceId:2', "SetPicture", parameters, 'PhotoTextViewer');
+				setDevice('urn:schemas-upnp-org:device:PhotoTextViewer:1', 'urn:schemas-upnp-org:serviceId:1', "SetPicture", parameters, 'PhotoTextViewer');
 			break;
 		case 'Lampe_Bureau':
 			setDevice('urn:schemas-upnp-org:device:X10CM11:1', 'urn:schemas-upnp-org:serviceId:2', action, parameters, 'Lampe_Bureau');
@@ -165,8 +168,6 @@ function setDeviceResponseHandler(sensorName, action, parameters, reponse) {
 
 function updateAccelero() {
 	updateAcceleroOnAxis('X');
-	updateAcceleroOnAxis('Y');
-	updateAcceleroOnAxis('Z');
 }
 
 function updateAcceleroOnAxis(coord) {
@@ -185,15 +186,28 @@ function updateAcceleroOnAxis(coord) {
 					switch(coord) {
 						case 'X':
 							var value = result['s:Envelope']['s:Body'][0]['u:getXValueResponse'][0].x[0];
-							sensor['Accelero'].push({date: new Date(), axis: 'x', value: value});
+							if(value != 0) {
+								sensor['Accelero'].push({date: new Date(), axis: 'x', value: value});
+								eventEmitter.emit('sensorChange', {sensorName: "Accelero", action: "getXValue", parameters: {}, buf: value});
+							} else {
+								updateAcceleroOnAxis('Y');
+							}
 							break;
 						case 'Y':
 							var value = result['s:Envelope']['s:Body'][0]['u:getYValueResponse'][0].y[0];
-							sensor['Accelero'].push({date: new Date(), axis: 'y', value: value});
+							if(value != 0) {
+								sensor['Accelero'].push({date: new Date(), axis: 'y', value: value});
+								eventEmitter.emit('sensorChange', {sensorName: "Accelero", action: "getYValue", parameters: {}, buf: value});
+							} else {
+								updateAcceleroOnAxis('Z');
+							}
 							break
 						default:
 							var value = result['s:Envelope']['s:Body'][0]['u:getZValueResponse'][0].z[0];
-							sensor['Accelero'].push({date: new Date(), axis: 'z', value: value});
+							if(value != 0) {
+								sensor['Accelero'].push({date: new Date(), axis: 'z', value: value});
+								eventEmitter.emit('sensorChange', {sensorName: "Accelero", action: "getZValue", parameters: {}, buf: value});
+							}
 					}
 				});
 			} catch (exception) {
@@ -253,7 +267,7 @@ function userIsInKitchen(){
 	textToSpeech("Que souhaitez-vous manger ce soir?");
 	pizza = true;
 	//Dire à l'application Android d'ouvrir le service pour répondre à la question
-	setSensor('Android_userInKitchen', 'launchPizza', {});
+	setSensor('Android_userInKitchen', 'launchSTT', {});
 }
 
 handleUserInKitchen = function(){
@@ -317,6 +331,8 @@ handleVoice = function(){
 		});
 		if(pizzaFound){
 			console.log("PIZZA");
+			//Dire à l'application Android d'ouvrir le service pour répondre à la question
+			setSensor('Android_userInKitchen', 'launchPizza', {});
 		}
 	}
 
@@ -328,6 +344,8 @@ handleVoice = function(){
 		});
 		if(goodDay){
 			console.log("BOOOONNNNNNNEEe");
+			var url = 'http://'+ipAddress+':5000/happy.mp3';
+			setSensor("AudioPlayer", "ExecuteCommand", {ElementName: "Lecteur_Audio", Command: "play", Argument: url});
 		}
 	}
 }
@@ -368,6 +386,19 @@ console.log("REST Server listening on port 5000");
 //MP3 à lire
 app.get('/voice.mp3', function(req, res){
  	var filepath = path.join(__dirname, 'voice.mp3');
+ 	var stat = fs.statSync(filepath);
+ 
+ 	res.writeHead(200, {
+ 		'Content-Type': 'audio/mpeg',
+ 		'Content-Length': stat.size
+ 	});
+ 
+ 	var readStream = fs.createReadStream(filepath);
+	readStream.pipe(res);
+});
+
+app.get('/happy.mp3', function(req, res){
+ 	var filepath = path.join(__dirname, 'happy.mp3');
  	var stat = fs.statSync(filepath);
  
  	res.writeHead(200, {
@@ -495,7 +526,7 @@ app.post('/userInKitchen', function(sReq, sRes){
 });
 
 
-//Accelero Android
+//Accelero Android inutile
 app.post('/accelero', function(sReq, sRes){
 	console.log("Requete recu: "+ JSON.stringify(sReq.body));
 
@@ -551,7 +582,6 @@ function postOnFacebook(body) {
 }
 
 eventEmitter.on('sensorChange', function(event) {
-	console.log(event);
 	switch(event.sensorName) {
 		case 'Lampe_Halogene':
 			if(event.parameters.Command == 'On')
@@ -570,6 +600,11 @@ eventEmitter.on('sensorChange', function(event) {
 				postOnFacebook("Je parle à "+currentUser+" ! :)");
 			}
 			break;
+		case 'Accelero':
+			console.log("canapé");
+			postOnFacebook(currentUser+" est dans le canapé!");
+			generateHomepage();
+			break;
 		default:
 	}
 });
@@ -580,15 +615,16 @@ eventEmitter.on('userInKitchen', function() {
 
 eventEmitter.on('rfid', function(event) {
 	if(event.tagInfo.$.action == 'gained') {
+		setSensor('Android_userInKitchen', 'launchSTT', {});
 		postOnFacebook(currentUser + " est rentré! :)");
 		setSensor('Lampe_Bureau', 'ExecuteCommand', {ElementName: 'Lampe_Bureau', Command: "On"});
 		setTimeout(function() {
 			setSensor('Lampe_Halogene', 'ExecuteCommand', {ElementName: 'Lampe_Halogene', Command: "Off"});
 		}, 1000);
 		if(currentUser == "un inconnu")
-			textToSpeech("Bonjour, comment allez vous?");
+			textToSpeech("Bonjour, avez vous passé une bonne journée?");
 		else
-			textToSpeech("Bonjour "+ currentUser +", comment allez vous?");
+			textToSpeech("Bonjour "+ currentUser +", avez vous passé une bonne journée?");
 		bonneJournee = true;
 	}
 	if(event.tagInfo.$.action == 'lost') {
@@ -603,6 +639,35 @@ eventEmitter.on('rfid', function(event) {
 
 /*--------------------------------------------------    Homepage    --------------------------------------------------------*/
 
+function getLatestMovies() {
+	var request = http.get('http://data.linkedmdb.org/sparql?query=Prefix%20rdfs:%20%3Chttp://www.w3.org/2000/01/rdf-schema%23%3E%20Select%20?labels%20Where%20{%20?x%20rdfs:label%20?labels.%20FILTER%20regex(?labels,%20%22DVD%22)}', function(response) {
+		var body = '';
+		response.on('data', function(chunk) {
+			body += chunk;
+		});
+		response.on('end', function() {;
+			var parser = new xml2js.Parser();
+			try {
+				parser.parseString(body, function(err, result) {
+					if (err) {
+						console.log("got XML parsing err: " + err);
+						return;
+					}
+					return formatLatestMovies(result);
+
+				});
+			} catch (exception) {
+				console.log("GET latestMovies exception: " + exception);
+			}
+		});
+	});
+}
+
+function formatLatestMovies(res) {
+	console.log(res);
+	return res;
+}
+
 function getLocalWeather() {
 	var request = http.get('http://api.openweathermap.org/data/2.5/weather?lat=48&lon=-4.5', function(response) {
 		var body ='';
@@ -610,13 +675,13 @@ function getLocalWeather() {
 			body += chunk;
 		});
 		response.on('end', function() {;
-			formatLocalWeather(body);
+			return formatLocalWeather(body);
 		});
 	});
 }
 
 function formatLocalWeather(body) {
-	console.log(body);
+	return body;
 }
 
 function getLocalNews() {
@@ -633,7 +698,7 @@ function getLocalNews() {
 						console.log("got XML parsing err: " + err);
 						return;
 					}
-					formatLocalNews(result.rss.channel[0]);
+					return formatLocalNews(result.rss.channel[0]);
 
 				});
 			} catch (exception) {
@@ -653,11 +718,37 @@ function formatLocalNews(rss) {
 		console.log("Article "+item+" date: "+rss.item[item].pubDate[0]);
 		console.log("Article "+item+" link: "+rss.item[item].link[0]);
 	}
+	return rss;
+}
+
+function getJarvisFeed(html) {
+	FB.api('me/statuses', 'get', function (res) {
+	  if(!res || res.error) {
+	    console.log(!res ? 'error occurred' : res.error);
+	    return;
+	  }
+	  formatJarvisFeed(res,html);
+	});
+}
+
+function formatJarvisFeed(res,html) {
+	html +=' <h2>FACEBOOK FEED</h2>';
+	for(var item in res.data) {
+		//html+= '<li>';
+		html+= res.data[item].from.name + " a dit " + res.data[item].message + " le " + res.data[item].updated_time;
+		//console.log(res.data[item].from.name + " a dit " + res.data[item].message + " le " + res.data[item].updated_time);
+		//html+='</li>';
+	}
+	//html+='</ul>';
+	console.log(html);
+	setSensor('PhotoTextViewer', 'SetText', {Text: html});
+	return res;
 }
 
 function generateHomepage() {	
-	getLocalWeather();
+	var html ='<h1>Informations</h1>';
 	//getLocalNews();
-}
+	getJarvisFeed(html);
 
-//generateHomepage();
+	//setSensor('PhotoTextViewer', 'SetText', {Text: html});
+}
